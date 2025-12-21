@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Switch,
   Platform,
   KeyboardAvoidingView,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -18,6 +20,7 @@ import { generateUUID } from '@/utils/financeUtils';
 export default function AddTransactionScreen() {
   const { addTransaction } = useFinance();
   const router = useRouter();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const [activeTab, setActiveTab] = useState<TransactionType>(TransactionType.EXPENSE);
   const [name, setName] = useState('');
@@ -69,10 +72,16 @@ export default function AddTransactionScreen() {
   };
 
   const onDateChange = (_event: any, selectedDate?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios');
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
     if (selectedDate) {
       setDate(selectedDate);
     }
+  };
+
+  const confirmDate = () => {
+    setShowDatePicker(false);
   };
 
   const frequencies: { value: Frequency; label: string }[] = [
@@ -82,13 +91,27 @@ export default function AddTransactionScreen() {
     { value: Frequency.MONTHLY, label: 'Monthly' },
   ];
 
+  // Scroll to input when focused
+  const handleInputFocus = (yOffset: number) => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: yOffset, animated: true });
+    }, 100);
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-slate-50 dark:bg-slate-900"
+      style={{ flex: 1, backgroundColor: '#f8fafc' }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="px-4 pt-4 pb-8">
+      <ScrollView
+        ref={scrollViewRef}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="px-4 pt-4">
           {/* Type Tabs */}
           <View className="flex-row bg-slate-100 dark:bg-slate-800 rounded-xl p-1 mb-6">
             <TouchableOpacity
@@ -144,6 +167,7 @@ export default function AddTransactionScreen() {
                 activeTab === TransactionType.EXPENSE ? 'e.g. Rent, Netflix' : 'e.g. Paycheck'
               }
               placeholderTextColor="#94a3b8"
+              returnKeyType="next"
               className="bg-white dark:bg-slate-800 rounded-xl p-4 text-slate-800 dark:text-white font-medium border border-slate-200 dark:border-slate-700"
             />
           </View>
@@ -161,66 +185,103 @@ export default function AddTransactionScreen() {
                 keyboardType="decimal-pad"
                 placeholder="0.00"
                 placeholderTextColor="#94a3b8"
+                returnKeyType="done"
                 className="flex-1 p-4 text-slate-800 dark:text-white text-lg font-bold"
               />
             </View>
           </View>
 
-          {/* Frequency & Date Row */}
-          <View className="flex-row gap-3 mb-4">
-            <View className="flex-1">
-              <Text className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">
-                Frequency
-              </Text>
-              <View className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                {frequencies.map((f) => (
-                  <TouchableOpacity
-                    key={f.value}
-                    onPress={() => setFrequency(f.value)}
-                    className={`p-3 border-b border-slate-100 dark:border-slate-700 ${
-                      frequency === f.value ? 'bg-brand-50 dark:bg-brand-900/20' : ''
+          {/* Frequency */}
+          <View className="mb-4">
+            <Text className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">
+              Frequency
+            </Text>
+            <View className="flex-row gap-2">
+              {frequencies.map((f) => (
+                <TouchableOpacity
+                  key={f.value}
+                  onPress={() => setFrequency(f.value)}
+                  className={`flex-1 py-3 rounded-xl border ${
+                    frequency === f.value
+                      ? 'bg-brand-600 border-brand-600'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <Text
+                    className={`text-center text-xs font-semibold ${
+                      frequency === f.value
+                        ? 'text-white'
+                        : 'text-slate-600 dark:text-slate-300'
                     }`}
                   >
-                    <Text
-                      className={`text-center text-sm ${
-                        frequency === f.value
-                          ? 'text-brand-600 dark:text-brand-400 font-semibold'
-                          : 'text-slate-600 dark:text-slate-300'
-                      }`}
-                    >
-                      {f.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <View className="flex-1">
-              <Text className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">
-                Next Date
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowDatePicker(true)}
-                className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700"
-              >
-                <Text className="text-slate-800 dark:text-white text-center font-medium">
-                  {date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </Text>
-              </TouchableOpacity>
-              {showDatePicker && (
-                <DateTimePicker
-                  value={date}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={onDateChange}
-                />
-              )}
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
+
+          {/* Date Picker */}
+          <View className="mb-4">
+            <Text className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">
+              Next Date
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowDatePicker(true)}
+              className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700"
+            >
+              <Text className="text-slate-800 dark:text-white text-center font-medium text-base">
+                {date.toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* iOS Date Picker Modal */}
+          {Platform.OS === 'ios' && (
+            <Modal
+              visible={showDatePicker}
+              transparent
+              animationType="slide"
+            >
+              <View className="flex-1 justify-end bg-black/50">
+                <View className="bg-white dark:bg-slate-800 rounded-t-3xl">
+                  <View className="flex-row justify-between items-center px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <Text className="text-slate-500 text-base">Cancel</Text>
+                    </TouchableOpacity>
+                    <Text className="text-slate-800 dark:text-white font-semibold text-base">
+                      Select Date
+                    </Text>
+                    <TouchableOpacity onPress={confirmDate}>
+                      <Text className="text-brand-600 font-semibold text-base">Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={date}
+                    mode="date"
+                    display="spinner"
+                    onChange={onDateChange}
+                    style={{ height: 200 }}
+                  />
+                </View>
+              </View>
+            </Modal>
+          )}
+
+          {/* Android Date Picker */}
+          {Platform.OS === 'android' && showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="default"
+              onChange={onDateChange}
+            />
+          )}
 
           {/* Debt Tracking (Expense only) */}
           {activeTab === TransactionType.EXPENSE && (
@@ -296,6 +357,7 @@ export default function AddTransactionScreen() {
                         keyboardType="decimal-pad"
                         placeholder="19.99"
                         placeholderTextColor="#94a3b8"
+                        onFocus={() => handleInputFocus(400)}
                         className="bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600"
                       />
                     </View>
@@ -309,6 +371,7 @@ export default function AddTransactionScreen() {
                         keyboardType="decimal-pad"
                         placeholder="2500"
                         placeholderTextColor="#94a3b8"
+                        onFocus={() => handleInputFocus(400)}
                         className="bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600"
                       />
                     </View>
@@ -327,6 +390,7 @@ export default function AddTransactionScreen() {
                           keyboardType="decimal-pad"
                           placeholder="5000"
                           placeholderTextColor="#94a3b8"
+                          onFocus={() => handleInputFocus(480)}
                           className="bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600"
                         />
                       </View>
@@ -340,6 +404,7 @@ export default function AddTransactionScreen() {
                           keyboardType="decimal-pad"
                           placeholder="500"
                           placeholderTextColor="#94a3b8"
+                          onFocus={() => handleInputFocus(480)}
                           className="bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600"
                         />
                       </View>
@@ -358,6 +423,7 @@ export default function AddTransactionScreen() {
                         keyboardType="number-pad"
                         placeholder="60"
                         placeholderTextColor="#94a3b8"
+                        onFocus={() => handleInputFocus(480)}
                         className="bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600"
                       />
                     </View>

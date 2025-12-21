@@ -33,7 +33,8 @@ export default function SettingsScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-slate-50 dark:bg-slate-900"
+      style={{ flex: 1, backgroundColor: '#f8fafc' }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
       <View className="flex-1 px-4 pt-4">
         {/* Current Balance Display */}
