@@ -95,7 +95,7 @@ export default function AddTransactionScreen() {
               onPress={() => setActiveTab(TransactionType.EXPENSE)}
               className={`flex-1 py-3 rounded-lg ${
                 activeTab === TransactionType.EXPENSE
-                  ? 'bg-white dark:bg-slate-700 shadow-sm'
+                  ? 'bg-white dark:bg-slate-700'
                   : ''
               }`}
             >
@@ -116,7 +116,7 @@ export default function AddTransactionScreen() {
               }}
               className={`flex-1 py-3 rounded-lg ${
                 activeTab === TransactionType.INCOME
-                  ? 'bg-white dark:bg-slate-700 shadow-sm'
+                  ? 'bg-white dark:bg-slate-700'
                   : ''
               }`}
             >
@@ -373,7 +373,7 @@ export default function AddTransactionScreen() {
             disabled={!name.trim() || !amount}
             className={`py-4 rounded-xl mt-4 ${
               name.trim() && amount
-                ? 'bg-brand-600 shadow-lg shadow-brand-600/30'
+                ? 'bg-brand-600'
                 : 'bg-slate-300 dark:bg-slate-700'
             }`}
           >

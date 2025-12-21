@@ -43,7 +43,7 @@ export default function DebtCard({ debt }: DebtCardProps) {
     limit > 0 && debt.currentBalance ? (debt.currentBalance / limit) * 100 : 0;
 
   return (
-    <View className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden mb-4">
+    <View className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 overflow-hidden mb-4">
       {/* Header */}
       <View className="p-4 border-b border-slate-50 dark:border-slate-700 flex-row justify-between items-start">
         <View>

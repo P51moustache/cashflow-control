@@ -19,7 +19,7 @@ export default function SummaryCard() {
   const isSafe = lowestBalance > 500;
 
   return (
-    <View className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700">
+    <View className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
       <View className="flex-row justify-between items-center">
         <View className="flex-1">
           <Text className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">

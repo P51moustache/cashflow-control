@@ -60,7 +60,7 @@ export default function TransactionsScreen() {
         </View>
         <TouchableOpacity
           onPress={() => router.push('/add-transaction')}
-          className="bg-brand-600 rounded-full p-3 shadow-lg shadow-brand-600/30"
+          className="bg-brand-600 rounded-full p-3"
         >
           <IconSymbol name="plus.circle.fill" size={24} color="#ffffff" />
         </TouchableOpacity>

@@ -14,7 +14,7 @@ export default function TransactionCard({ transaction, onDelete }: TransactionCa
   const isDebt = !!transaction.debtType;
 
   return (
-    <View className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 mb-3">
+    <View className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700 mb-3">
       <View className="flex-row justify-between items-start">
         <View className="flex-row items-center flex-1">
           <View

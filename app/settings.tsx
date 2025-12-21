@@ -99,7 +99,7 @@ export default function SettingsScreen() {
         {/* Save Button */}
         <TouchableOpacity
           onPress={handleSave}
-          className="bg-brand-600 py-4 rounded-xl shadow-lg shadow-brand-600/30"
+          className="bg-brand-600 py-4 rounded-xl"
         >
           <Text className="text-center text-white font-bold text-lg">
             Save Balance

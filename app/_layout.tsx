@@ -2,42 +2,41 @@ import "@/global.css";
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { FinanceProvider } from '@/context/FinanceContext';
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
-
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <FinanceProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="add-transaction"
-            options={{
-              presentation: 'modal',
-              title: 'Add Transaction',
-              headerShown: true,
-            }}
-          />
-          <Stack.Screen
-            name="settings"
-            options={{
-              presentation: 'modal',
-              title: 'Settings',
-              headerShown: true,
-            }}
-          />
-        </Stack>
-        <StatusBar style="auto" />
+        <FinanceProvider>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="add-transaction"
+              options={{
+                presentation: 'modal',
+                title: 'Add Transaction',
+                headerShown: true,
+              }}
+            />
+            <Stack.Screen
+              name="settings"
+              options={{
+                presentation: 'modal',
+                title: 'Settings',
+                headerShown: true,
+              }}
+            />
+          </Stack>
+          <StatusBar style="auto" />
+        </FinanceProvider>
       </ThemeProvider>
-    </FinanceProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -54,7 +54,7 @@ export default function DebtScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="px-4 pt-2 pb-24">
           {/* Header Stats Card */}
-          <View className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-5 shadow-lg mb-6 relative overflow-hidden">
+          <View className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-5 mb-6 relative overflow-hidden">
             <View className="absolute top-0 right-0 p-4 opacity-10">
               <IconSymbol name="chart.line.uptrend.xyaxis" size={80} color="#ffffff" />
             </View>

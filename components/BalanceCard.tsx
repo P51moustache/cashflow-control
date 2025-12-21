@@ -13,7 +13,7 @@ export default function BalanceCard() {
     <TouchableOpacity
       onPress={() => router.push('/settings')}
       activeOpacity={0.8}
-      className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-5 shadow-lg"
+      className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-5"
     >
       <View className="flex-row justify-between items-start">
         <View>

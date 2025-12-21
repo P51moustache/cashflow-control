@@ -14,7 +14,7 @@ export default function CashFlowChart() {
 
   if (projection.length === 0) {
     return (
-      <View className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm">
+      <View className="bg-white dark:bg-slate-800 rounded-2xl p-4">
         <Text className="text-slate-500 dark:text-slate-400 text-center py-8">
           No projection data available
         </Text>
@@ -35,7 +35,7 @@ export default function CashFlowChart() {
   const chartWidth = screenWidth - 80;
 
   return (
-    <View className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700">
+    <View className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
       <Text className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-4">
         45-Day Projection
       </Text>
