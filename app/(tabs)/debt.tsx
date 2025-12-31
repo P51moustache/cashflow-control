@@ -1,27 +1,75 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFinance } from '@/context/FinanceContext';
-import DebtCard from '@/components/DebtCard';
 import { formatCurrency } from '@/utils/financeUtils';
+import { getCreditCards } from '@/utils/debtProjectionUtils';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import DebtStrategySelector from '@/components/DebtStrategySelector';
+import PaymentBudgetCard from '@/components/PaymentBudgetCard';
+import MonthlyBudgetCard from '@/components/MonthlyBudgetCard';
+import EnhancedDebtCard from '@/components/EnhancedDebtCard';
+import PayoffTimeline from '@/components/PayoffTimeline';
+import StrategyComparisonModal from '@/components/StrategyComparisonModal';
 
 export default function DebtScreen() {
-  const { transactions, isLoading } = useFinance();
+  const {
+    transactions,
+    isLoading,
+    debtSettings,
+    debtProjection,
+    updateDebtSettings,
+    updateTransaction,
+  } = useFinance();
 
-  // Filter debts (transactions with debtType set)
-  const debts = transactions.filter((t) => t.debtType);
-  const totalDebt = debts.reduce((sum, t) => sum + (t.currentBalance || 0), 0);
-  const totalMonthlyPayments = debts.reduce((sum, t) => sum + t.amount, 0);
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
+
+  // Get credit cards only (not loans for now)
+  const creditCards = getCreditCards(transactions);
+  const totalDebt = creditCards.reduce((sum, t) => sum + (t.currentBalance || 0), 0);
+  const totalMonthlyPayments = debtProjection?.totalMonthlyPayments ?? 0;
 
   // Calculate Blended APR
   const blendedAPR =
     totalDebt > 0
-      ? debts.reduce(
+      ? creditCards.reduce(
           (acc, t) => acc + (t.apr || 0) * (t.currentBalance || 0),
           0
         ) / totalDebt
       : 0;
+
+  const handleStrategyChange = async (strategy: typeof debtSettings.payoffStrategy) => {
+    await updateDebtSettings({ payoffStrategy: strategy });
+  };
+
+  const handleBudgetChange = async (budget: number) => {
+    await updateDebtSettings({ totalMonthlyBudget: budget });
+  };
+
+  const handlePaymentBudgetChange = async (budget: number) => {
+    await updateDebtSettings({ totalMonthlyPaymentBudget: budget });
+  };
+
+  const handlePercentageChange = async (cardId: string, percentage: number) => {
+    const card = creditCards.find(c => c.id === cardId);
+    if (card) {
+      await updateTransaction({ ...card, spendingPercentage: percentage });
+    }
+  };
+
+  const handleMinimumPaymentChange = async (cardId: string, amount: number) => {
+    const card = creditCards.find(c => c.id === cardId);
+    if (card) {
+      await updateTransaction({ ...card, minimumPayment: amount });
+    }
+  };
+
+  const handleExtraPaymentChange = async (cardId: string, amount: number) => {
+    const card = creditCards.find(c => c.id === cardId);
+    if (card) {
+      await updateTransaction({ ...card, extraPayment: amount });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -31,7 +79,7 @@ export default function DebtScreen() {
     );
   }
 
-  if (debts.length === 0) {
+  if (creditCards.length === 0) {
     return (
       <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={['top']}>
         <View className="flex-1 items-center justify-center px-8">
@@ -39,10 +87,10 @@ export default function DebtScreen() {
             <IconSymbol name="creditcard.fill" size={64} color="#94a3b8" />
           </View>
           <Text className="text-slate-400 dark:text-slate-500 text-center text-lg mb-2">
-            No debts tracked yet
+            No credit cards tracked yet
           </Text>
           <Text className="text-slate-300 dark:text-slate-600 text-center text-sm">
-            Add an expense and enable "Track as Debt" to see debt projections here
+            Add an expense and enable "Track as Debt" → "Credit Card" to see projections here
           </Text>
         </View>
       </SafeAreaView>
@@ -54,18 +102,18 @@ export default function DebtScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="px-4 pt-2 pb-24">
           {/* Header Stats Card */}
-          <View className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-5 mb-6 relative overflow-hidden">
+          <View className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-5 mb-4 relative overflow-hidden">
             <View className="absolute top-0 right-0 p-4 opacity-10">
               <IconSymbol name="chart.line.uptrend.xyaxis" size={80} color="#ffffff" />
             </View>
             <View className="relative z-10">
               <Text className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">
-                Total Liability
+                Total Credit Card Debt
               </Text>
               <Text className="text-white text-3xl font-bold mb-4">
                 {formatCurrency(totalDebt)}
               </Text>
-              <View className="flex-row gap-8">
+              <View className="flex-row gap-6">
                 <View>
                   <Text className="text-slate-400 text-[10px] uppercase">
                     Blended APR
@@ -76,38 +124,106 @@ export default function DebtScreen() {
                 </View>
                 <View>
                   <Text className="text-slate-400 text-[10px] uppercase">
-                    Monthly Commit
+                    Monthly Payments
                   </Text>
                   <Text className="font-mono font-bold text-lg text-white">
                     {formatCurrency(totalMonthlyPayments)}
+                  </Text>
+                </View>
+                <View>
+                  <Text className="text-slate-400 text-[10px] uppercase">
+                    Monthly Interest
+                  </Text>
+                  <Text className="font-mono font-bold text-lg text-red-400">
+                    {formatCurrency(debtProjection?.monthlyInterestCost ?? 0)}
                   </Text>
                 </View>
               </View>
             </View>
           </View>
 
+          {/* Strategy Selector */}
+          <View className="mb-4">
+            <DebtStrategySelector
+              selectedStrategy={debtSettings.payoffStrategy}
+              onSelect={handleStrategyChange}
+              onComparePress={() => setShowComparisonModal(true)}
+            />
+          </View>
+
+          {/* Payment Budget Card - How much you can pay toward cards */}
+          <View className="mb-4">
+            <PaymentBudgetCard
+              totalPaymentBudget={debtSettings.totalMonthlyPaymentBudget}
+              onPaymentBudgetChange={handlePaymentBudgetChange}
+              creditCards={creditCards}
+              strategy={debtSettings.payoffStrategy}
+            />
+          </View>
+
+          {/* Monthly Budget Card - New spending on cards */}
+          <View className="mb-4">
+            <MonthlyBudgetCard
+              totalBudget={debtSettings.totalMonthlyBudget}
+              onBudgetChange={handleBudgetChange}
+              creditCards={creditCards}
+              onPercentageChange={handlePercentageChange}
+            />
+          </View>
+
+          {/* Payoff Timeline */}
+          {debtProjection && debtProjection.projections.length > 0 && (
+            <View className="mb-4">
+              <PayoffTimeline
+                projections={debtProjection.projections}
+                totalInterestCost={debtProjection.totalInterestCost}
+              />
+            </View>
+          )}
+
           {/* Section Title */}
-          <Text className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
-            Your Accounts
+          <Text className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 mt-2">
+            Your Credit Cards
           </Text>
 
-          {/* Debt Cards */}
-          {debts.map((debt) => (
-            <DebtCard key={debt.id} debt={debt} />
-          ))}
+          {/* Credit Card Cards */}
+          {creditCards.map((card) => {
+            const projection = debtProjection?.projections.find(
+              p => p.cardId === card.id
+            );
+            return (
+              <EnhancedDebtCard
+                key={card.id}
+                card={card}
+                projection={projection}
+                onMinimumPaymentChange={handleMinimumPaymentChange}
+                onExtraPaymentChange={handleExtraPaymentChange}
+              />
+            );
+          })}
 
           {/* Tip */}
           <View className="bg-brand-50 dark:bg-brand-900/20 rounded-xl p-4 mt-2">
             <Text className="text-brand-700 dark:text-brand-300 text-sm font-medium mb-1">
-              Debt Payoff Tip
+              How Projections Work
             </Text>
             <Text className="text-brand-600 dark:text-brand-400 text-xs">
-              Focus extra payments on the highest APR debt first (avalanche method)
-              to minimize total interest paid.
+              Set your monthly CC spending budget and allocate it across cards. Enter your minimum
+              payment for each card. Use "Compare" to see how different strategies affect your payoff.
             </Text>
           </View>
         </View>
       </ScrollView>
+
+      {/* Strategy Comparison Modal */}
+      <StrategyComparisonModal
+        visible={showComparisonModal}
+        onClose={() => setShowComparisonModal(false)}
+        transactions={transactions}
+        debtSettings={debtSettings}
+        currentStrategy={debtSettings.payoffStrategy}
+        onSelectStrategy={handleStrategyChange}
+      />
     </SafeAreaView>
   );
 }
