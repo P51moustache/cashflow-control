@@ -101,13 +101,36 @@ export default function TransactionsScreen() {
                 onDelete={() => handleDelete(tx.id, tx.name)}
               />
             ))
-          ) : (
+          ) : transactions.length > 0 && filter !== 'all' ? (
+            /* Filtered but no results for this filter */
             <View className="bg-white dark:bg-slate-800 rounded-xl p-8 items-center border border-slate-100 dark:border-slate-700 mt-4">
               <Text className="text-4xl mb-4">
-                {filter === 'income' ? '💰' : filter === 'expense' ? '💸' : '📋'}
+                {filter === 'income' ? '💰' : '💸'}
               </Text>
-              <Text className="text-slate-400 dark:text-slate-500 text-center">
-                No {filter === 'all' ? '' : filter} transactions yet
+              <Text className="text-slate-800 dark:text-slate-200 font-semibold text-base mb-1 text-center">
+                No {filter} transactions
+              </Text>
+              <Text className="text-slate-400 dark:text-slate-500 text-center text-sm">
+                Try a different filter or add a new one
+              </Text>
+              <TouchableOpacity
+                onPress={() => setFilter('all')}
+                className="mt-4 bg-slate-100 dark:bg-slate-700 px-6 py-3 rounded-xl"
+              >
+                <Text className="text-slate-700 dark:text-slate-200 font-semibold">
+                  Show All
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* No transactions at all */
+            <View className="bg-white dark:bg-slate-800 rounded-xl p-8 items-center border border-slate-100 dark:border-slate-700 mt-4">
+              <Text className="text-4xl mb-4">📋</Text>
+              <Text className="text-slate-800 dark:text-slate-200 font-semibold text-base mb-1 text-center">
+                No transactions yet
+              </Text>
+              <Text className="text-slate-400 dark:text-slate-500 text-center text-sm">
+                Add your first income or expense to get started
               </Text>
               <TouchableOpacity
                 onPress={() => router.push('/add-transaction')}

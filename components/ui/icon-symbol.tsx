@@ -34,6 +34,9 @@ const MAPPING = {
   'star.fill': 'star',
   'dollarsign.circle': 'attach-money',
   'info.circle': 'info-outline',
+  'sparkles': 'auto-awesome',
+  'magnifyingglass': 'search',
+  'xmark.circle.fill': 'cancel',
 } as IconMapping;
 
 /**

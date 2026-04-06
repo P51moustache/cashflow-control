@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useFinance } from '@/context/FinanceContext';
 import { formatCurrency } from '@/utils/financeUtils';
 import { getCreditCards } from '@/utils/debtProjectionUtils';
@@ -22,6 +23,7 @@ export default function DebtScreen() {
     updateTransaction,
   } = useFinance();
 
+  const router = useRouter();
   const [showComparisonModal, setShowComparisonModal] = useState(false);
 
   // Get credit cards only (not loans for now)
@@ -89,9 +91,15 @@ export default function DebtScreen() {
           <Text className="text-slate-400 dark:text-slate-500 text-center text-lg mb-2">
             No credit cards tracked yet
           </Text>
-          <Text className="text-slate-300 dark:text-slate-600 text-center text-sm">
-            Add an expense and enable "Track as Debt" → "Credit Card" to see projections here
+          <Text className="text-slate-300 dark:text-slate-600 text-center text-sm mb-6">
+            Add an expense and enable "Track as Debt" to see payoff projections here
           </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/add-transaction')}
+            className="bg-brand-600 px-6 py-3 rounded-xl"
+          >
+            <Text className="text-white font-bold text-base">Add a Credit Card</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
