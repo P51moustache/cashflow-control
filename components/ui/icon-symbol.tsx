@@ -26,6 +26,14 @@ const MAPPING = {
   'gearshape.fill': 'settings',
   'arrow.up.circle.fill': 'arrow-upward',
   'arrow.down.circle.fill': 'arrow-downward',
+  'minus.circle': 'remove-circle-outline',
+  'flame': 'local-fire-department',
+  'circle.circle': 'adjust',
+  'xmark': 'close',
+  'checkmark.circle.fill': 'check-circle',
+  'star.fill': 'star',
+  'dollarsign.circle': 'attach-money',
+  'info.circle': 'info-outline',
 } as IconMapping;
 
 /**
