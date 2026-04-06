@@ -38,7 +38,7 @@ export default function TransactionCard({ transaction, onDelete }: TransactionCa
               <Text className="text-slate-400 dark:text-slate-500 text-xs">
                 {getFrequencyLabel(transaction.frequency)}
               </Text>
-              {isDebt && (
+              {isDebt && transaction.apr != null && (
                 <View className="bg-slate-100 dark:bg-slate-700 rounded px-1.5 py-0.5 ml-2">
                   <Text className="text-slate-500 dark:text-slate-400 text-[10px] font-medium">
                     {transaction.apr}% APR

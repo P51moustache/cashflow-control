@@ -34,7 +34,7 @@ export default function SummaryCard() {
                 : 'text-orange-500'
             }`}
           >
-            {formatCurrency(Math.max(0, lowestBalance))}
+            {formatCurrency(lowestBalance)}
           </Text>
           <Text className="text-slate-400 dark:text-slate-500 text-xs mt-1">
             Lowest balance on {lowestDate}
