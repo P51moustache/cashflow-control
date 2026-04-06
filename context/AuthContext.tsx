@@ -29,6 +29,10 @@ function useProtectedRoute(isAuthenticated: boolean, isLoading: boolean) {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === 'auth';
+    const onOnboarding = segments[0] === 'onboarding';
+
+    // Don't interfere with onboarding flow
+    if (onOnboarding) return;
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/auth/sign-in');

@@ -1,5 +1,5 @@
 import "@/global.css";
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -11,6 +11,36 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { FinanceProvider } from '@/context/FinanceContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { SubscriptionProvider, useSubscription } from '@/context/SubscriptionContext';
+import { hasCompletedOnboarding } from '@/utils/onboarding';
+
+/**
+ * Handles onboarding gating: redirects to onboarding if user hasn't completed it.
+ * Onboarding runs BEFORE auth/subscription gates.
+ */
+function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const [hasOnboarded, setHasOnboarded] = useState<boolean | null>(null);
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    hasCompletedOnboarding().then(setHasOnboarded);
+  }, []);
+
+  useEffect(() => {
+    if (hasOnboarded === null) return; // Still loading
+
+    const onOnboarding = segments[0] === 'onboarding';
+
+    if (!hasOnboarded && !onOnboarding) {
+      router.replace('/onboarding');
+    } else if (hasOnboarded && onOnboarding) {
+      // Onboarding complete — move to main app (auth will gate from here)
+      router.replace('/(tabs)');
+    }
+  }, [hasOnboarded, segments]);
+
+  return <>{children}</>;
+}
 
 /**
  * Handles paywall gating: redirects to paywall when subscription is inactive.
@@ -31,9 +61,10 @@ function SubscriptionGate({ children }: { children: React.ReactNode }) {
 
     const onPaywall = segments[0] === 'paywall';
     const inAuthGroup = segments[0] === 'auth';
+    const onOnboarding = segments[0] === 'onboarding';
 
-    // Don't interfere with auth screens
-    if (inAuthGroup) return;
+    // Don't interfere with auth screens or onboarding
+    if (inAuthGroup || onOnboarding) return;
 
     if (!isSubscribed && !isTrialing && !onPaywall) {
       // User needs to subscribe — redirect to paywall
@@ -53,44 +84,53 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AuthProvider>
-          <SubscriptionProvider>
-            <FinanceProvider>
-              <SubscriptionGate>
-                <Stack>
-                  <Stack.Screen name="auth" options={{ headerShown: false }} />
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen
-                    name="paywall"
-                    options={{
-                      presentation: 'fullScreenModal',
-                      headerShown: false,
-                      gestureEnabled: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="add-transaction"
-                    options={{
-                      presentation: 'modal',
-                      title: 'Add Transaction',
-                      headerShown: true,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="settings"
-                    options={{
-                      presentation: 'modal',
-                      title: 'Settings',
-                      headerShown: true,
-                    }}
-                  />
-                </Stack>
-              </SubscriptionGate>
-              <StatusBar style="auto" />
-              <Toast />
-            </FinanceProvider>
-          </SubscriptionProvider>
-        </AuthProvider>
+        <FinanceProvider>
+          <OnboardingGate>
+            <AuthProvider>
+              <SubscriptionProvider>
+                <SubscriptionGate>
+                  <Stack>
+                    <Stack.Screen
+                      name="onboarding"
+                      options={{
+                        headerShown: false,
+                        gestureEnabled: false,
+                      }}
+                    />
+                    <Stack.Screen name="auth" options={{ headerShown: false }} />
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen
+                      name="paywall"
+                      options={{
+                        presentation: 'fullScreenModal',
+                        headerShown: false,
+                        gestureEnabled: false,
+                      }}
+                    />
+                    <Stack.Screen
+                      name="add-transaction"
+                      options={{
+                        presentation: 'modal',
+                        title: 'Add Transaction',
+                        headerShown: true,
+                      }}
+                    />
+                    <Stack.Screen
+                      name="settings"
+                      options={{
+                        presentation: 'modal',
+                        title: 'Settings',
+                        headerShown: true,
+                      }}
+                    />
+                  </Stack>
+                </SubscriptionGate>
+                <StatusBar style="auto" />
+                <Toast />
+              </SubscriptionProvider>
+            </AuthProvider>
+          </OnboardingGate>
+        </FinanceProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );
