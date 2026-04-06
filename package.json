@@ -21,6 +21,7 @@
     "@supabase/supabase-js": "^2.101.1",
     "date-fns": "^4.1.0",
     "expo": "~54.0.30",
+    "expo-apple-authentication": "~8.0.8",
     "expo-constants": "~18.0.12",
     "expo-crypto": "~15.0.8",
     "expo-document-picker": "~14.0.8",

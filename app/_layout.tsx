@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { FinanceProvider } from '@/context/FinanceContext';
+import { AuthProvider } from '@/context/AuthContext';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -15,29 +16,32 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <FinanceProvider>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="add-transaction"
-              options={{
-                presentation: 'modal',
-                title: 'Add Transaction',
-                headerShown: true,
-              }}
-            />
-            <Stack.Screen
-              name="settings"
-              options={{
-                presentation: 'modal',
-                title: 'Settings',
-                headerShown: true,
-              }}
-            />
-          </Stack>
-          <StatusBar style="auto" />
-          <Toast />
-        </FinanceProvider>
+        <AuthProvider>
+          <FinanceProvider>
+            <Stack>
+              <Stack.Screen name="auth" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="add-transaction"
+                options={{
+                  presentation: 'modal',
+                  title: 'Add Transaction',
+                  headerShown: true,
+                }}
+              />
+              <Stack.Screen
+                name="settings"
+                options={{
+                  presentation: 'modal',
+                  title: 'Settings',
+                  headerShown: true,
+                }}
+              />
+            </Stack>
+            <StatusBar style="auto" />
+            <Toast />
+          </FinanceProvider>
+        </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );
