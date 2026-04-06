@@ -1,4 +1,10 @@
-import { generateProjection } from '@/utils/financeUtils';
+import {
+  generateProjection,
+  formatCurrency,
+  formatShortCurrency,
+  getFrequencyLabel,
+  generateUUID,
+} from '@/utils/financeUtils';
 import { Transaction, TransactionType, Frequency } from '@/types';
 
 /**
@@ -11,7 +17,6 @@ function getFiringDates(
   days: number
 ): string[] {
   // We need to mock "today" so generateProjection uses our startDate.
-  const realDateNow = Date.now;
   const realDate = global.Date;
 
   // Create a custom Date class that defaults to our startDate
@@ -42,6 +47,40 @@ function getFiringDates(
   }
 }
 
+/**
+ * Helper: run a projection with a mocked "today" date and return the full projection.
+ */
+function runProjection(
+  initialBalance: number,
+  transactions: Transaction[],
+  startDate: Date,
+  days: number
+) {
+  const realDate = global.Date;
+
+  const MockDate = class extends realDate {
+    constructor(...args: any[]) {
+      if (args.length === 0) {
+        super(startDate.getTime());
+      } else {
+        // @ts-ignore
+        super(...args);
+      }
+    }
+    static now() {
+      return startDate.getTime();
+    }
+  } as DateConstructor;
+
+  global.Date = MockDate;
+
+  try {
+    return generateProjection(initialBalance, transactions, days);
+  } finally {
+    global.Date = realDate;
+  }
+}
+
 function makeTransaction(overrides: Partial<Transaction>): Transaction {
   return {
     id: 'test-1',
@@ -53,6 +92,130 @@ function makeTransaction(overrides: Partial<Transaction>): Transaction {
     ...overrides,
   };
 }
+
+// ─── formatCurrency ────────────────────────────────────────────────────────────
+
+describe('formatCurrency', () => {
+  it('formats a positive amount', () => {
+    expect(formatCurrency(1234.56)).toBe('$1,234.56');
+  });
+
+  it('formats zero', () => {
+    expect(formatCurrency(0)).toBe('$0.00');
+  });
+
+  it('formats a negative amount with minus sign', () => {
+    const result = formatCurrency(-42.5);
+    // Intl can use a hyphen-minus or a Unicode minus sign depending on env
+    expect(result).toMatch(/^-\$42\.50$/);
+  });
+
+  it('formats a large number with commas', () => {
+    expect(formatCurrency(1000000)).toBe('$1,000,000.00');
+  });
+
+  it('rounds to two decimal places', () => {
+    expect(formatCurrency(9.999)).toBe('$10.00');
+  });
+
+  it('handles very small positive amount', () => {
+    expect(formatCurrency(0.01)).toBe('$0.01');
+  });
+});
+
+// ─── formatShortCurrency ───────────────────────────────────────────────────────
+
+describe('formatShortCurrency', () => {
+  it('returns full format for values under 1000', () => {
+    expect(formatShortCurrency(500)).toBe('$500.00');
+  });
+
+  it('returns full format for exactly 999', () => {
+    expect(formatShortCurrency(999)).toBe('$999.00');
+  });
+
+  it('returns compact notation for 1000+', () => {
+    const result = formatShortCurrency(1500);
+    // Compact notation may produce "$1.5K" or "$2K" depending on rounding
+    expect(result).toMatch(/\$\d/);
+    expect(result.length).toBeLessThan('$1,500.00'.length);
+  });
+
+  it('returns compact notation for large values', () => {
+    const result = formatShortCurrency(1000000);
+    expect(result).toMatch(/\$\d/);
+    // Should be something like "$1M"
+    expect(result.length).toBeLessThan('$1,000,000.00'.length);
+  });
+
+  it('handles negative values under 1000 with full format', () => {
+    const result = formatShortCurrency(-500);
+    expect(result).toMatch(/-\$500\.00/);
+  });
+
+  it('handles negative values over 1000 with compact notation', () => {
+    const result = formatShortCurrency(-5000);
+    expect(result).toMatch(/-?\$\d/);
+    expect(result.length).toBeLessThan('-$5,000.00'.length);
+  });
+
+  it('formats zero the same as formatCurrency', () => {
+    expect(formatShortCurrency(0)).toBe(formatCurrency(0));
+  });
+});
+
+// ─── getFrequencyLabel ─────────────────────────────────────────────────────────
+
+describe('getFrequencyLabel', () => {
+  it('returns "One Time" for ONE_TIME', () => {
+    expect(getFrequencyLabel(Frequency.ONE_TIME)).toBe('One Time');
+  });
+
+  it('returns "Weekly" for WEEKLY', () => {
+    expect(getFrequencyLabel(Frequency.WEEKLY)).toBe('Weekly');
+  });
+
+  it('returns "Bi-Weekly" for BI_WEEKLY', () => {
+    expect(getFrequencyLabel(Frequency.BI_WEEKLY)).toBe('Bi-Weekly');
+  });
+
+  it('returns "Monthly" for MONTHLY', () => {
+    expect(getFrequencyLabel(Frequency.MONTHLY)).toBe('Monthly');
+  });
+});
+
+// ─── generateUUID ──────────────────────────────────────────────────────────────
+
+describe('generateUUID', () => {
+  it('returns a string matching UUID v4 format', () => {
+    const uuid = generateUUID();
+    // xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx where y is [89ab]
+    expect(uuid).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    );
+  });
+
+  it('always has "4" as version digit', () => {
+    for (let i = 0; i < 20; i++) {
+      const uuid = generateUUID();
+      expect(uuid[14]).toBe('4');
+    }
+  });
+
+  it('generates unique values across multiple calls', () => {
+    const uuids = new Set<string>();
+    for (let i = 0; i < 100; i++) {
+      uuids.add(generateUUID());
+    }
+    expect(uuids.size).toBe(100);
+  });
+
+  it('has correct length (36 characters including hyphens)', () => {
+    expect(generateUUID().length).toBe(36);
+  });
+});
+
+// ─── generateProjection ────────────────────────────────────────────────────────
 
 describe('financeUtils - generateProjection', () => {
   describe('Weekly recurrence', () => {
@@ -199,67 +362,155 @@ describe('financeUtils - generateProjection', () => {
 
   describe('Balance calculations', () => {
     it('correctly subtracts expenses from balance', () => {
-      const realDate = global.Date;
-      const startDate = new Date(2026, 3, 5);
-      const MockDate = class extends realDate {
-        constructor(...args: any[]) {
-          if (args.length === 0) {
-            super(startDate.getTime());
-          } else {
-            // @ts-ignore
-            super(...args);
-          }
-        }
-        static now() {
-          return startDate.getTime();
-        }
-      } as DateConstructor;
-      global.Date = MockDate;
-
-      try {
-        const t = makeTransaction({
-          frequency: Frequency.ONE_TIME,
-          date: '2026-04-05',
-          amount: 250,
-          type: TransactionType.EXPENSE,
-        });
-        const projection = generateProjection(1000, [t], 2);
-        expect(projection[0].balance).toBe(750); // 1000 - 250
-      } finally {
-        global.Date = realDate;
-      }
+      const t = makeTransaction({
+        frequency: Frequency.ONE_TIME,
+        date: '2026-04-05',
+        amount: 250,
+        type: TransactionType.EXPENSE,
+      });
+      const projection = runProjection(1000, [t], new Date(2026, 3, 5), 2);
+      expect(projection[0].balance).toBe(750); // 1000 - 250
     });
 
     it('correctly adds income to balance', () => {
-      const realDate = global.Date;
-      const startDate = new Date(2026, 3, 5);
-      const MockDate = class extends realDate {
-        constructor(...args: any[]) {
-          if (args.length === 0) {
-            super(startDate.getTime());
-          } else {
-            // @ts-ignore
-            super(...args);
-          }
-        }
-        static now() {
-          return startDate.getTime();
-        }
-      } as DateConstructor;
-      global.Date = MockDate;
+      const t = makeTransaction({
+        frequency: Frequency.ONE_TIME,
+        date: '2026-04-05',
+        amount: 500,
+        type: TransactionType.INCOME,
+      });
+      const projection = runProjection(1000, [t], new Date(2026, 3, 5), 2);
+      expect(projection[0].balance).toBe(1500); // 1000 + 500
+    });
+  });
 
-      try {
-        const t = makeTransaction({
-          frequency: Frequency.ONE_TIME,
-          date: '2026-04-05',
-          amount: 500,
-          type: TransactionType.INCOME,
-        });
-        const projection = generateProjection(1000, [t], 2);
-        expect(projection[0].balance).toBe(1500); // 1000 + 500
-      } finally {
-        global.Date = realDate;
-      }
+  // ─── Edge cases ────────────────────────────────────────────────────────────
+
+  describe('Edge cases', () => {
+    it('empty transactions -> projection with just initial balance', () => {
+      const projection = runProjection(500, [], new Date(2026, 3, 5), 5);
+      expect(projection).toHaveLength(5);
+      projection.forEach((day) => {
+        expect(day.balance).toBe(500);
+        expect(day.transactions).toHaveLength(0);
+      });
+    });
+
+    it('negative initial balance -> still projects correctly', () => {
+      const t = makeTransaction({
+        frequency: Frequency.ONE_TIME,
+        date: '2026-04-05',
+        amount: 100,
+        type: TransactionType.EXPENSE,
+      });
+      const projection = runProjection(-200, [t], new Date(2026, 3, 5), 3);
+      expect(projection[0].balance).toBe(-300); // -200 - 100
+      expect(projection[1].balance).toBe(-300); // unchanged on day 2
+    });
+
+    it('multiple transactions on the same day', () => {
+      const t1 = makeTransaction({
+        id: 'a',
+        frequency: Frequency.ONE_TIME,
+        date: '2026-04-05',
+        amount: 100,
+        type: TransactionType.EXPENSE,
+      });
+      const t2 = makeTransaction({
+        id: 'b',
+        frequency: Frequency.ONE_TIME,
+        date: '2026-04-05',
+        amount: 200,
+        type: TransactionType.EXPENSE,
+      });
+      const projection = runProjection(1000, [t1, t2], new Date(2026, 3, 5), 2);
+      expect(projection[0].transactions).toHaveLength(2);
+      expect(projection[0].balance).toBe(700); // 1000 - 100 - 200
+    });
+
+    it('income and expense on same day offset each other', () => {
+      const income = makeTransaction({
+        id: 'inc',
+        frequency: Frequency.ONE_TIME,
+        date: '2026-04-05',
+        amount: 300,
+        type: TransactionType.INCOME,
+      });
+      const expense = makeTransaction({
+        id: 'exp',
+        frequency: Frequency.ONE_TIME,
+        date: '2026-04-05',
+        amount: 300,
+        type: TransactionType.EXPENSE,
+      });
+      const projection = runProjection(
+        1000,
+        [income, expense],
+        new Date(2026, 3, 5),
+        2
+      );
+      expect(projection[0].balance).toBe(1000); // +300 - 300 = net zero
+      expect(projection[0].transactions).toHaveLength(2);
+    });
+
+    it('zero amount transaction does not change balance', () => {
+      const t = makeTransaction({
+        frequency: Frequency.ONE_TIME,
+        date: '2026-04-05',
+        amount: 0,
+        type: TransactionType.EXPENSE,
+      });
+      const projection = runProjection(1000, [t], new Date(2026, 3, 5), 2);
+      expect(projection[0].balance).toBe(1000);
+      expect(projection[0].transactions).toHaveLength(1); // still listed as a transaction
+    });
+
+    it('marks the lowest point in the projection', () => {
+      const expense = makeTransaction({
+        id: 'exp',
+        frequency: Frequency.ONE_TIME,
+        date: '2026-04-05',
+        amount: 800,
+        type: TransactionType.EXPENSE,
+      });
+      const income = makeTransaction({
+        id: 'inc',
+        frequency: Frequency.ONE_TIME,
+        date: '2026-04-06',
+        amount: 500,
+        type: TransactionType.INCOME,
+      });
+      const projection = runProjection(
+        1000,
+        [expense, income],
+        new Date(2026, 3, 5),
+        3
+      );
+      // Day 0: 1000-800 = 200 (lowest)
+      // Day 1: 200+500 = 700
+      // Day 2: 700
+      expect(projection[0].balance).toBe(200);
+      expect(projection[0].lowestPoint).toBe(true);
+      expect(projection[1].lowestPoint).toBe(false);
+    });
+
+    it('projects exactly daysToProject days', () => {
+      const projection = runProjection(100, [], new Date(2026, 3, 5), 10);
+      expect(projection).toHaveLength(10);
+    });
+
+    it('one-time transaction only fires once', () => {
+      const t = makeTransaction({
+        frequency: Frequency.ONE_TIME,
+        date: '2026-04-05',
+        amount: 50,
+        type: TransactionType.EXPENSE,
+      });
+      const projection = runProjection(1000, [t], new Date(2026, 3, 5), 5);
+      // Balance should drop once on day 0 and stay steady
+      expect(projection[0].balance).toBe(950);
+      expect(projection[1].balance).toBe(950);
+      expect(projection[4].balance).toBe(950);
     });
   });
 });
