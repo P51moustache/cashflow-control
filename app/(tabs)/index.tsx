@@ -4,11 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFinance } from '@/context/FinanceContext';
 import BalanceCard from '@/components/BalanceCard';
+import NetWorthCard from '@/components/NetWorthCard';
 import SummaryCard from '@/components/SummaryCard';
 import CashFlowChart from '@/components/CashFlowChart';
 import TransactionCard from '@/components/TransactionCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { TransactionType } from '@/types';
+import { formatCurrency } from '@/utils/financeUtils';
+import { TransactionType, Frequency } from '@/types';
 
 export default function DashboardScreen() {
   const { transactions, isLoading, refresh } = useFinance();
@@ -32,6 +34,32 @@ export default function DashboardScreen() {
       return txDate >= today && txDate <= nextWeek;
     })
     .slice(0, 3);
+
+  // Monthly cashflow calculations (considers only monthly/recurring transactions)
+  const getMonthlyAmount = (t: typeof transactions[0]): number => {
+    switch (t.frequency) {
+      case Frequency.MONTHLY:
+        return t.amount;
+      case Frequency.BI_WEEKLY:
+        return t.amount * (26 / 12); // ~2.167x per month
+      case Frequency.WEEKLY:
+        return t.amount * (52 / 12); // ~4.333x per month
+      case Frequency.ONE_TIME:
+        return 0; // One-time transactions don't count toward monthly
+      default:
+        return t.amount;
+    }
+  };
+
+  const monthlyIncome = transactions
+    .filter((t) => t.type === TransactionType.INCOME)
+    .reduce((sum, t) => sum + getMonthlyAmount(t), 0);
+
+  const monthlyExpenses = transactions
+    .filter((t) => t.type === TransactionType.EXPENSE)
+    .reduce((sum, t) => sum + getMonthlyAmount(t), 0);
+
+  const netCashflow = monthlyIncome - monthlyExpenses;
 
   if (isLoading) {
     return (
@@ -67,12 +95,20 @@ export default function DashboardScreen() {
                 Your 45-day projection
               </Text>
             </View>
-            <TouchableOpacity
-              onPress={() => router.push('/add-transaction')}
-              className="bg-brand-600 rounded-full p-3"
-            >
-              <IconSymbol name="plus.circle.fill" size={24} color="#ffffff" />
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-3">
+              <TouchableOpacity
+                onPress={() => router.push('/settings')}
+                className="bg-slate-200 dark:bg-slate-700 rounded-full p-2.5"
+              >
+                <IconSymbol name="gearshape.fill" size={22} color="#94a3b8" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push('/add-transaction')}
+                className="bg-brand-600 rounded-full p-3"
+              >
+                <IconSymbol name="plus.circle.fill" size={24} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {transactions.length === 0 ? (
@@ -99,6 +135,11 @@ export default function DashboardScreen() {
               {/* Balance Card */}
               <View className="mb-4">
                 <BalanceCard />
+              </View>
+
+              {/* Net Worth Card */}
+              <View className="mb-4">
+                <NetWorthCard />
               </View>
 
               {/* Summary Card */}
@@ -145,17 +186,13 @@ export default function DashboardScreen() {
               </View>
 
               {/* Quick Stats */}
-              <View className="flex-row gap-3">
+              <View className="flex-row gap-3 mb-4">
                 <View className="flex-1 bg-green-50 dark:bg-green-900/20 rounded-xl p-4">
                   <Text className="text-green-600 dark:text-green-400 text-xs font-bold uppercase">
                     Monthly Income
                   </Text>
                   <Text className="text-green-700 dark:text-green-300 text-lg font-bold mt-1">
-                    $
-                    {transactions
-                      .filter((t) => t.type === TransactionType.INCOME)
-                      .reduce((sum, t) => sum + t.amount, 0)
-                      .toLocaleString()}
+                    {formatCurrency(monthlyIncome)}
                   </Text>
                 </View>
                 <View className="flex-1 bg-red-50 dark:bg-red-900/20 rounded-xl p-4">
@@ -163,11 +200,45 @@ export default function DashboardScreen() {
                     Monthly Expenses
                   </Text>
                   <Text className="text-red-700 dark:text-red-300 text-lg font-bold mt-1">
-                    $
-                    {transactions
-                      .filter((t) => t.type === TransactionType.EXPENSE)
-                      .reduce((sum, t) => sum + t.amount, 0)
-                      .toLocaleString()}
+                    {formatCurrency(monthlyExpenses)}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Monthly Trend */}
+              <View
+                className={`rounded-xl p-4 ${
+                  netCashflow >= 0
+                    ? 'bg-green-50 dark:bg-green-900/20'
+                    : 'bg-red-50 dark:bg-red-900/20'
+                }`}
+              >
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    <IconSymbol
+                      name={netCashflow >= 0 ? 'arrow.up.circle.fill' : 'arrow.down.circle.fill'}
+                      size={24}
+                      color={netCashflow >= 0 ? '#16a34a' : '#ef4444'}
+                    />
+                    <Text
+                      className={`text-base font-bold ml-2 ${
+                        netCashflow >= 0
+                          ? 'text-green-700 dark:text-green-300'
+                          : 'text-red-700 dark:text-red-300'
+                      }`}
+                    >
+                      Net {netCashflow >= 0 ? '+' : '-'}
+                      {formatCurrency(Math.abs(netCashflow))}/mo
+                    </Text>
+                  </View>
+                  <Text
+                    className={`text-xs font-medium ${
+                      netCashflow >= 0
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400'
+                    }`}
+                  >
+                    Monthly Cashflow
                   </Text>
                 </View>
               </View>
