@@ -4,12 +4,14 @@ import React from 'react';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const tintColor = colorScheme === 'dark' ? '#14b8a6' : '#0d9488';
 
   return (
+    <ErrorBoundary>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: tintColor,
@@ -42,5 +44,6 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </ErrorBoundary>
   );
 }

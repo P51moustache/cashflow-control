@@ -3,6 +3,7 @@ import { Platform, Alert } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
+import { setUser as setSentryUser, clearUser as clearSentryUser } from '@/lib/sentry';
 
 interface AuthContextType {
   user: User | null;
@@ -71,6 +72,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
+
+      // Keep Sentry user context in sync
+      if (newSession?.user) {
+        setSentryUser(newSession.user.id, newSession.user.email ?? undefined);
+      } else {
+        clearSentryUser();
+      }
     });
 
     return () => {

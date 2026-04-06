@@ -12,6 +12,11 @@ import { FinanceProvider } from '@/context/FinanceContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { SubscriptionProvider, useSubscription } from '@/context/SubscriptionContext';
 import { hasCompletedOnboarding } from '@/utils/onboarding';
+import { initSentry } from '@/lib/sentry';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+
+// Initialize Sentry as early as possible
+initSentry();
 
 /**
  * Handles onboarding gating: redirects to onboarding if user hasn't completed it.
@@ -83,55 +88,57 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <FinanceProvider>
-          <OnboardingGate>
-            <AuthProvider>
-              <SubscriptionProvider>
-                <SubscriptionGate>
-                  <Stack>
-                    <Stack.Screen
-                      name="onboarding"
-                      options={{
-                        headerShown: false,
-                        gestureEnabled: false,
-                      }}
-                    />
-                    <Stack.Screen name="auth" options={{ headerShown: false }} />
-                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                    <Stack.Screen
-                      name="paywall"
-                      options={{
-                        presentation: 'fullScreenModal',
-                        headerShown: false,
-                        gestureEnabled: false,
-                      }}
-                    />
-                    <Stack.Screen
-                      name="add-transaction"
-                      options={{
-                        presentation: 'modal',
-                        title: 'Add Transaction',
-                        headerShown: true,
-                      }}
-                    />
-                    <Stack.Screen
-                      name="settings"
-                      options={{
-                        presentation: 'card',
-                        title: 'Settings',
-                        headerShown: true,
-                      }}
-                    />
-                  </Stack>
-                </SubscriptionGate>
-                <StatusBar style="auto" />
-                <Toast />
-              </SubscriptionProvider>
-            </AuthProvider>
-          </OnboardingGate>
-        </FinanceProvider>
-      </ThemeProvider>
+      <ErrorBoundary>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <FinanceProvider>
+            <OnboardingGate>
+              <AuthProvider>
+                <SubscriptionProvider>
+                  <SubscriptionGate>
+                    <Stack>
+                      <Stack.Screen
+                        name="onboarding"
+                        options={{
+                          headerShown: false,
+                          gestureEnabled: false,
+                        }}
+                      />
+                      <Stack.Screen name="auth" options={{ headerShown: false }} />
+                      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                      <Stack.Screen
+                        name="paywall"
+                        options={{
+                          presentation: 'fullScreenModal',
+                          headerShown: false,
+                          gestureEnabled: false,
+                        }}
+                      />
+                      <Stack.Screen
+                        name="add-transaction"
+                        options={{
+                          presentation: 'modal',
+                          title: 'Add Transaction',
+                          headerShown: true,
+                        }}
+                      />
+                      <Stack.Screen
+                        name="settings"
+                        options={{
+                          presentation: 'card',
+                          title: 'Settings',
+                          headerShown: true,
+                        }}
+                      />
+                    </Stack>
+                  </SubscriptionGate>
+                  <StatusBar style="auto" />
+                  <Toast />
+                </SubscriptionProvider>
+              </AuthProvider>
+            </OnboardingGate>
+          </FinanceProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }
