@@ -25,9 +25,11 @@ const ExpoSecureStoreAdapter = {
   },
 };
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
 
+// Client is created with placeholder values when env vars aren't set.
+// AuthContext checks isSupabaseConfigured before making any actual API calls.
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: ExpoSecureStoreAdapter,
@@ -36,3 +38,5 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
   },
 });
+
+export const isSupabaseConfigured = supabaseUrl !== 'https://placeholder.supabase.co';
