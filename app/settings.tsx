@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFinance } from '@/context/FinanceContext';
@@ -15,6 +16,8 @@ export default function SettingsScreen() {
   const { currentBalance, updateBalance } = useFinance();
   const router = useRouter();
   const [balance, setBalance] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     setBalance(currentBalance.toString());
@@ -22,9 +25,24 @@ export default function SettingsScreen() {
 
   const handleSave = async () => {
     const newBalance = parseFloat(balance);
-    if (!isNaN(newBalance)) {
+    if (isNaN(newBalance)) {
+      setError('Enter a valid number');
+      return;
+    }
+    if (newBalance < 0) {
+      setError('Balance cannot be negative');
+      return;
+    }
+
+    setError('');
+    setIsSaving(true);
+    try {
       await updateBalance(newBalance);
       router.back();
+    } catch {
+      // Error toast shown by context
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -56,7 +74,10 @@ export default function SettingsScreen() {
             <Text className="text-slate-400 text-2xl pl-4">$</Text>
             <TextInput
               value={balance}
-              onChangeText={setBalance}
+              onChangeText={(text) => {
+                setBalance(text);
+                if (error) setError('');
+              }}
               keyboardType="decimal-pad"
               placeholder="0.00"
               placeholderTextColor="#94a3b8"
@@ -64,6 +85,7 @@ export default function SettingsScreen() {
               autoFocus
             />
           </View>
+          {error ? <Text className="text-red-500 text-xs mt-2">{error}</Text> : null}
         </View>
 
         {/* Quick Presets */}
@@ -100,11 +122,16 @@ export default function SettingsScreen() {
         {/* Save Button */}
         <TouchableOpacity
           onPress={handleSave}
-          className="bg-brand-600 py-4 rounded-xl"
+          disabled={isSaving}
+          className={`py-4 rounded-xl ${isSaving ? 'bg-slate-300 dark:bg-slate-700' : 'bg-brand-600'}`}
         >
-          <Text className="text-center text-white font-bold text-lg">
-            Save Balance
-          </Text>
+          {isSaving ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text className="text-center text-white font-bold text-lg">
+              Save Balance
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
