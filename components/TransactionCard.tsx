@@ -10,7 +10,7 @@ interface TransactionCardProps {
   onDelete?: () => void;
 }
 
-export default function TransactionCard({ transaction, onDelete }: TransactionCardProps) {
+function TransactionCard({ transaction, onDelete }: TransactionCardProps) {
   const isIncome = transaction.type === TransactionType.INCOME;
   const isDebt = !!transaction.debtType;
   const swipeableRef = useRef<Swipeable>(null);
@@ -118,3 +118,5 @@ export default function TransactionCard({ transaction, onDelete }: TransactionCa
 
   return cardContent;
 }
+
+export default React.memo(TransactionCard);

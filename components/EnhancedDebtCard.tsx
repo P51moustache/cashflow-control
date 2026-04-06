@@ -22,7 +22,7 @@ interface EnhancedDebtCardProps {
   onExtraPaymentChange: (cardId: string, amount: number) => void;
 }
 
-export default function EnhancedDebtCard({
+function EnhancedDebtCard({
   card,
   projection,
   onMinimumPaymentChange,
@@ -275,3 +275,5 @@ export default function EnhancedDebtCard({
     </View>
   );
 }
+
+export default React.memo(EnhancedDebtCard);

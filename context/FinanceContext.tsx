@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import Toast from 'react-native-toast-message';
 import { Transaction, DailyBalance, DebtSettings, DebtProjectionSummary, PayoffStrategy } from '@/types';
 import { generateProjection } from '@/utils/financeUtils';
@@ -43,15 +43,13 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [currentBalance, setCurrentBalance] = useState<number>(0);
-  const [projection, setProjection] = useState<DailyBalance[]>([]);
-  const [lowestBalance, setLowestBalance] = useState<number>(0);
+  // projection, lowestBalance, and debtProjection are derived via useMemo below
   const [isLoading, setIsLoading] = useState(true);
   const [debtSettings, setDebtSettings] = useState<DebtSettings>({
     totalMonthlyBudget: 0,
     totalMonthlyPaymentBudget: 0,
     payoffStrategy: PayoffStrategy.SNOWBALL,
   });
-  const [debtProjection, setDebtProjection] = useState<DebtProjectionSummary | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [lastSynced, setLastSynced] = useState<string>('Never');
   const syncStatusUnsubRef = useRef<(() => void) | null>(null);
@@ -102,20 +100,25 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     loadData();
   }, [loadData]);
 
-  // Recalculate projection whenever transactions or balance changes
-  useEffect(() => {
-    const proj = generateProjection(currentBalance, transactions);
-    setProjection(proj);
+  // Derive projection synchronously from transactions + balance
+  const projection = useMemo(
+    () => generateProjection(currentBalance, transactions),
+    [currentBalance, transactions]
+  );
 
-    const min = proj.reduce((min, day) => (day.balance < min ? day.balance : min), Infinity);
-    setLowestBalance(min === Infinity ? currentBalance : min);
-  }, [transactions, currentBalance]);
+  const lowestBalance = useMemo(() => {
+    const min = projection.reduce(
+      (m, day) => (day.balance < m ? day.balance : m),
+      Infinity
+    );
+    return min === Infinity ? currentBalance : min;
+  }, [projection, currentBalance]);
 
-  // Recalculate debt projection when transactions or debt settings change
-  useEffect(() => {
-    const projection = generateDebtProjectionSummary(transactions, debtSettings);
-    setDebtProjection(projection);
-  }, [transactions, debtSettings]);
+  // Derive debt projection synchronously from transactions + settings
+  const debtProjection = useMemo(
+    () => generateDebtProjectionSummary(transactions, debtSettings),
+    [transactions, debtSettings]
+  );
 
   const addTransaction = useCallback(async (t: Transaction) => {
     try {

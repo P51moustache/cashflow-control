@@ -3,7 +3,7 @@ import { View, Text } from 'react-native';
 import { useFinance } from '@/context/FinanceContext';
 import { formatCurrency } from '@/utils/financeUtils';
 
-export default function SummaryCard() {
+function SummaryCard() {
   const { lowestBalance, projection } = useFinance();
 
   // Find the date of the lowest balance
@@ -62,3 +62,5 @@ export default function SummaryCard() {
     </View>
   );
 }
+
+export default React.memo(SummaryCard);

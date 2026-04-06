@@ -5,7 +5,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { formatCurrency } from '@/utils/financeUtils';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
-export default function BalanceCard() {
+function BalanceCard() {
   const { currentBalance } = useFinance();
   const router = useRouter();
 
@@ -34,3 +34,5 @@ export default function BalanceCard() {
     </TouchableOpacity>
   );
 }
+
+export default React.memo(BalanceCard);

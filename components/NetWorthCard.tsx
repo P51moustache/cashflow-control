@@ -4,7 +4,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { formatCurrency } from '@/utils/financeUtils';
 import { DebtType } from '@/types';
 
-export default function NetWorthCard() {
+function NetWorthCard() {
   const { currentBalance, transactions } = useFinance();
 
   // Total assets = current checking balance
@@ -70,3 +70,5 @@ export default function NetWorthCard() {
     </View>
   );
 }
+
+export default React.memo(NetWorthCard);

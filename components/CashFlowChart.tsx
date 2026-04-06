@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Dimensions } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
 import { format, parseISO } from 'date-fns';
@@ -12,6 +12,22 @@ export default function CashFlowChart() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
+  const data = useMemo(
+    () =>
+      projection.map((p, index) => ({
+        value: p.balance,
+        label: index % 7 === 0 ? format(parseISO(p.date), 'MMM d') : '',
+        dataPointText: '',
+      })),
+    [projection]
+  );
+
+  const { minBalance, maxBalance, hasNegative } = useMemo(() => {
+    const min = Math.min(...projection.map((p) => p.balance));
+    const max = Math.max(...projection.map((p) => p.balance));
+    return { minBalance: min, maxBalance: max, hasNegative: min < 0 };
+  }, [projection]);
+
   if (projection.length === 0) {
     return (
       <View className="bg-white dark:bg-slate-800 rounded-2xl p-4">
@@ -21,16 +37,6 @@ export default function CashFlowChart() {
       </View>
     );
   }
-
-  const data = projection.map((p, index) => ({
-    value: p.balance,
-    label: index % 7 === 0 ? format(parseISO(p.date), 'MMM d') : '',
-    dataPointText: '',
-  }));
-
-  const minBalance = Math.min(...projection.map((p) => p.balance));
-  const maxBalance = Math.max(...projection.map((p) => p.balance));
-  const hasNegative = minBalance < 0;
 
   const chartWidth = screenWidth - 80;
 
