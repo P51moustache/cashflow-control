@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Transaction, TransactionType } from '@/types';
 import { formatCurrency, getFrequencyLabel } from '@/utils/financeUtils';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -12,8 +13,25 @@ interface TransactionCardProps {
 export default function TransactionCard({ transaction, onDelete }: TransactionCardProps) {
   const isIncome = transaction.type === TransactionType.INCOME;
   const isDebt = !!transaction.debtType;
+  const swipeableRef = useRef<Swipeable>(null);
 
-  return (
+  const renderRightActions = (
+    _progress: Animated.AnimatedInterpolation<number>,
+    _dragX: Animated.AnimatedInterpolation<number>
+  ) => (
+    <TouchableOpacity
+      onPress={() => {
+        swipeableRef.current?.close();
+        onDelete?.();
+      }}
+      className="bg-red-500 justify-center items-center px-6 rounded-xl mb-3"
+    >
+      <IconSymbol name="trash.fill" size={24} color="#ffffff" />
+      <Text className="text-white text-xs font-medium mt-1">Delete</Text>
+    </TouchableOpacity>
+  );
+
+  const cardContent = (
     <View className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700 mb-3">
       <View className="flex-row justify-between items-start">
         <View className="flex-row items-center flex-1">
@@ -84,4 +102,19 @@ export default function TransactionCard({ transaction, onDelete }: TransactionCa
       )}
     </View>
   );
+
+  if (onDelete) {
+    return (
+      <Swipeable
+        ref={swipeableRef}
+        renderRightActions={renderRightActions}
+        rightThreshold={80}
+        overshootRight={false}
+      >
+        {cardContent}
+      </Swipeable>
+    );
+  }
+
+  return cardContent;
 }
