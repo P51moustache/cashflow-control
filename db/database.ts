@@ -45,137 +45,167 @@ async function initDatabase(database: SQLite.SQLiteDatabase): Promise<void> {
 
 // Transaction CRUD operations
 export async function getAllTransactions(): Promise<Transaction[]> {
-  const database = await getDatabase();
-  const rows = await database.getAllAsync<{
-    id: string;
-    name: string;
-    amount: number;
-    type: string;
-    frequency: string;
-    date: string;
-    day_of_month: number | null;
-    debt_type: string | null;
-    apr: number | null;
-    current_balance: number | null;
-    credit_limit: number | null;
-    projected_monthly_spend: number | null;
-    loan_term_months: number | null;
-    is_flexible: number;
-    created_at: string;
-    updated_at: string;
-  }>('SELECT * FROM transactions ORDER BY date ASC');
+  try {
+    const database = await getDatabase();
+    const rows = await database.getAllAsync<{
+      id: string;
+      name: string;
+      amount: number;
+      type: string;
+      frequency: string;
+      date: string;
+      day_of_month: number | null;
+      debt_type: string | null;
+      apr: number | null;
+      current_balance: number | null;
+      credit_limit: number | null;
+      projected_monthly_spend: number | null;
+      loan_term_months: number | null;
+      is_flexible: number;
+      created_at: string;
+      updated_at: string;
+    }>('SELECT * FROM transactions ORDER BY date ASC');
 
-  return rows.map(row => ({
-    id: row.id,
-    name: row.name,
-    amount: row.amount,
-    type: row.type as TransactionType,
-    frequency: row.frequency as Frequency,
-    date: row.date,
-    dayOfMonth: row.day_of_month ?? undefined,
-    debtType: row.debt_type as DebtType | undefined,
-    apr: row.apr ?? undefined,
-    currentBalance: row.current_balance ?? undefined,
-    creditLimit: row.credit_limit ?? undefined,
-    projectedMonthlySpend: row.projected_monthly_spend ?? undefined,
-    loanTermMonths: row.loan_term_months ?? undefined,
-    isFlexible: row.is_flexible === 1,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
+    return rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      amount: row.amount,
+      type: row.type as TransactionType,
+      frequency: row.frequency as Frequency,
+      date: row.date,
+      dayOfMonth: row.day_of_month ?? undefined,
+      debtType: row.debt_type as DebtType | undefined,
+      apr: row.apr ?? undefined,
+      currentBalance: row.current_balance ?? undefined,
+      creditLimit: row.credit_limit ?? undefined,
+      projectedMonthlySpend: row.projected_monthly_spend ?? undefined,
+      loanTermMonths: row.loan_term_months ?? undefined,
+      isFlexible: row.is_flexible === 1,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  } catch (error) {
+    console.error('Failed to fetch transactions:', error);
+    return [];
+  }
 }
 
 export async function createTransaction(transaction: Transaction): Promise<void> {
-  const database = await getDatabase();
-  const now = new Date().toISOString();
+  try {
+    const database = await getDatabase();
+    const now = new Date().toISOString();
 
-  await database.runAsync(
-    `INSERT INTO transactions (
-      id, name, amount, type, frequency, date, day_of_month,
-      debt_type, apr, current_balance, credit_limit,
-      projected_monthly_spend, loan_term_months, is_flexible,
-      created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    transaction.id,
-    transaction.name,
-    transaction.amount,
-    transaction.type,
-    transaction.frequency,
-    transaction.date,
-    transaction.dayOfMonth ?? null,
-    transaction.debtType ?? null,
-    transaction.apr ?? null,
-    transaction.currentBalance ?? null,
-    transaction.creditLimit ?? null,
-    transaction.projectedMonthlySpend ?? null,
-    transaction.loanTermMonths ?? null,
-    transaction.isFlexible ? 1 : 0,
-    now,
-    now
-  );
+    await database.runAsync(
+      `INSERT INTO transactions (
+        id, name, amount, type, frequency, date, day_of_month,
+        debt_type, apr, current_balance, credit_limit,
+        projected_monthly_spend, loan_term_months, is_flexible,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      transaction.id,
+      transaction.name,
+      transaction.amount,
+      transaction.type,
+      transaction.frequency,
+      transaction.date,
+      transaction.dayOfMonth ?? null,
+      transaction.debtType ?? null,
+      transaction.apr ?? null,
+      transaction.currentBalance ?? null,
+      transaction.creditLimit ?? null,
+      transaction.projectedMonthlySpend ?? null,
+      transaction.loanTermMonths ?? null,
+      transaction.isFlexible ? 1 : 0,
+      now,
+      now
+    );
+  } catch (error) {
+    console.error('Failed to create transaction:', error);
+    throw new Error('Unable to save transaction. Please try again.');
+  }
 }
 
 export async function updateTransaction(transaction: Transaction): Promise<void> {
-  const database = await getDatabase();
-  const now = new Date().toISOString();
+  try {
+    const database = await getDatabase();
+    const now = new Date().toISOString();
 
-  await database.runAsync(
-    `UPDATE transactions SET
-      name = ?, amount = ?, type = ?, frequency = ?, date = ?,
-      day_of_month = ?, debt_type = ?, apr = ?, current_balance = ?,
-      credit_limit = ?, projected_monthly_spend = ?, loan_term_months = ?,
-      is_flexible = ?, updated_at = ?
-    WHERE id = ?`,
-    transaction.name,
-    transaction.amount,
-    transaction.type,
-    transaction.frequency,
-    transaction.date,
-    transaction.dayOfMonth ?? null,
-    transaction.debtType ?? null,
-    transaction.apr ?? null,
-    transaction.currentBalance ?? null,
-    transaction.creditLimit ?? null,
-    transaction.projectedMonthlySpend ?? null,
-    transaction.loanTermMonths ?? null,
-    transaction.isFlexible ? 1 : 0,
-    now,
-    transaction.id
-  );
+    await database.runAsync(
+      `UPDATE transactions SET
+        name = ?, amount = ?, type = ?, frequency = ?, date = ?,
+        day_of_month = ?, debt_type = ?, apr = ?, current_balance = ?,
+        credit_limit = ?, projected_monthly_spend = ?, loan_term_months = ?,
+        is_flexible = ?, updated_at = ?
+      WHERE id = ?`,
+      transaction.name,
+      transaction.amount,
+      transaction.type,
+      transaction.frequency,
+      transaction.date,
+      transaction.dayOfMonth ?? null,
+      transaction.debtType ?? null,
+      transaction.apr ?? null,
+      transaction.currentBalance ?? null,
+      transaction.creditLimit ?? null,
+      transaction.projectedMonthlySpend ?? null,
+      transaction.loanTermMonths ?? null,
+      transaction.isFlexible ? 1 : 0,
+      now,
+      transaction.id
+    );
+  } catch (error) {
+    console.error('Failed to update transaction:', error);
+    throw new Error('Unable to update transaction. Please try again.');
+  }
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
-  const database = await getDatabase();
-  await database.runAsync('DELETE FROM transactions WHERE id = ?', id);
+  try {
+    const database = await getDatabase();
+    await database.runAsync('DELETE FROM transactions WHERE id = ?', id);
+  } catch (error) {
+    console.error('Failed to delete transaction:', error);
+    throw new Error('Unable to delete transaction. Please try again.');
+  }
 }
 
 // User Settings operations
 export async function getUserSettings(): Promise<UserSettings> {
-  const database = await getDatabase();
-  const row = await database.getFirstAsync<{
-    id: number;
-    current_balance: number;
-    updated_at: string;
-  }>('SELECT * FROM user_settings WHERE id = 1');
+  try {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<{
+      id: number;
+      current_balance: number;
+      updated_at: string;
+    }>('SELECT * FROM user_settings WHERE id = 1');
 
-  if (!row) {
+    if (!row) {
+      return { id: 1, currentBalance: 0 };
+    }
+
+    return {
+      id: row.id,
+      currentBalance: row.current_balance,
+      updatedAt: row.updated_at,
+    };
+  } catch (error) {
+    console.error('Failed to fetch user settings:', error);
     return { id: 1, currentBalance: 0 };
   }
-
-  return {
-    id: row.id,
-    currentBalance: row.current_balance,
-    updatedAt: row.updated_at,
-  };
 }
 
 export async function updateBalance(balance: number): Promise<void> {
-  const database = await getDatabase();
-  const now = new Date().toISOString();
+  try {
+    const database = await getDatabase();
+    const now = new Date().toISOString();
 
-  await database.runAsync(
-    'UPDATE user_settings SET current_balance = ?, updated_at = ? WHERE id = 1',
-    balance,
-    now
-  );
+    await database.runAsync(
+      'UPDATE user_settings SET current_balance = ?, updated_at = ? WHERE id = 1',
+      balance,
+      now
+    );
+  } catch (error) {
+    console.error('Failed to update balance:', error);
+    throw new Error('Unable to update balance. Please try again.');
+  }
 }
