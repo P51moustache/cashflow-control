@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import Toast from 'react-native-toast-message';
 import { Transaction, DailyBalance, DebtSettings, DebtProjectionSummary, PayoffStrategy } from '@/types';
 import { generateProjection } from '@/utils/financeUtils';
@@ -12,7 +12,10 @@ import {
   updateBalance as updateBalanceDb,
   getDebtSettings,
   updateDebtSettings as updateDebtSettingsDb,
+  addToSyncQueue,
 } from '@/db/database';
+import { syncEngine, SyncStatus, transactionToSyncPayload } from '@/lib/sync';
+import { supabase } from '@/lib/supabase';
 
 interface FinanceContextType {
   transactions: Transaction[];
@@ -22,12 +25,15 @@ interface FinanceContextType {
   isLoading: boolean;
   debtSettings: DebtSettings;
   debtProjection: DebtProjectionSummary | null;
+  syncStatus: SyncStatus;
+  lastSynced: string;
   addTransaction: (t: Transaction) => Promise<void>;
   updateTransaction: (t: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
   updateBalance: (amount: number) => Promise<void>;
   updateDebtSettings: (settings: Partial<DebtSettings>) => Promise<void>;
   refresh: () => Promise<void>;
+  triggerSync: () => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -44,6 +50,33 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     payoffStrategy: PayoffStrategy.SNOWBALL,
   });
   const [debtProjection, setDebtProjection] = useState<DebtProjectionSummary | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const [lastSynced, setLastSynced] = useState<string>('Never');
+  const syncStatusUnsubRef = useRef<(() => void) | null>(null);
+
+  // Subscribe to sync engine status changes
+  useEffect(() => {
+    syncStatusUnsubRef.current = syncEngine.subscribe((status) => {
+      setSyncStatus(status);
+    });
+
+    // Load initial last-synced time
+    syncEngine.getLastSyncTimeFormatted().then(setLastSynced);
+
+    return () => {
+      if (syncStatusUnsubRef.current) {
+        syncStatusUnsubRef.current();
+        syncStatusUnsubRef.current = null;
+      }
+    };
+  }, []);
+
+  // Keep last-synced display up to date when sync status changes
+  useEffect(() => {
+    if (syncStatus === 'success') {
+      syncEngine.getLastSyncTimeFormatted().then(setLastSynced);
+    }
+  }, [syncStatus]);
 
   const loadData = useCallback(async () => {
     try {
@@ -86,6 +119,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       await createTransaction(t);
       setTransactions((prev) => [...prev, t]);
+      // Queue for sync to Supabase
+      await addToSyncQueue('transactions', t.id, 'INSERT', transactionToSyncPayload(t));
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Save Failed', text2: (error as Error).message });
       throw error;
@@ -96,6 +131,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       await updateTransactionDb(t);
       setTransactions((prev) => prev.map((tx) => (tx.id === t.id ? t : tx)));
+      // Queue for sync to Supabase
+      await addToSyncQueue('transactions', t.id, 'UPDATE', transactionToSyncPayload(t));
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Save Failed', text2: (error as Error).message });
       throw error;
@@ -106,6 +143,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       await deleteTransactionDb(id);
       setTransactions((prev) => prev.filter((t) => t.id !== id));
+      // Queue for sync to Supabase (soft delete on server side)
+      await addToSyncQueue('transactions', id, 'DELETE', {});
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Delete Failed', text2: (error as Error).message });
       throw error;
@@ -116,6 +155,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       await updateBalanceDb(amount);
       setCurrentBalance(amount);
+      // Queue for sync to Supabase
+      await addToSyncQueue('user_settings', '1', 'UPDATE', {
+        current_balance: amount,
+        updated_at: new Date().toISOString(),
+      });
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Save Failed', text2: (error as Error).message });
       throw error;
@@ -125,17 +169,36 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const updateDebtSettingsFn = useCallback(async (settings: Partial<DebtSettings>) => {
     try {
       await updateDebtSettingsDb(settings);
-      setDebtSettings((prev) => ({ ...prev, ...settings }));
+      const merged = { ...debtSettings, ...settings };
+      setDebtSettings(merged);
+      // Queue for sync to Supabase
+      await addToSyncQueue('debt_settings', '1', 'UPDATE', {
+        total_monthly_budget: merged.totalMonthlyBudget,
+        total_monthly_payment_budget: merged.totalMonthlyPaymentBudget,
+        payoff_strategy: merged.payoffStrategy,
+        updated_at: new Date().toISOString(),
+      });
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Save Failed', text2: (error as Error).message });
       throw error;
     }
-  }, []);
+  }, [debtSettings]);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
     await loadData();
   }, [loadData]);
+
+  const triggerSync = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        await syncEngine.performSync(session.user.id);
+      }
+    } catch (error) {
+      console.error('Manual sync trigger failed:', error);
+    }
+  }, []);
 
   return (
     <FinanceContext.Provider
@@ -147,12 +210,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         isLoading,
         debtSettings,
         debtProjection,
+        syncStatus,
+        lastSynced,
         addTransaction,
         updateTransaction,
         removeTransaction,
         updateBalance: updateBalanceFn,
         updateDebtSettings: updateDebtSettingsFn,
         refresh,
+        triggerSync,
       }}
     >
       {children}

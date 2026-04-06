@@ -50,6 +50,21 @@ async function initDatabase(database: SQLite.SQLiteDatabase): Promise<void> {
     );
 
     INSERT OR IGNORE INTO debt_settings (id) VALUES (1);
+
+    CREATE TABLE IF NOT EXISTS sync_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      table_name TEXT NOT NULL,
+      record_id TEXT NOT NULL,
+      operation TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      synced_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS sync_metadata (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
   `);
 }
 
@@ -275,5 +290,109 @@ export async function updateDebtSettings(settings: Partial<DebtSettings>): Promi
   } catch (error) {
     console.error('Failed to update debt settings:', error);
     throw new Error('Unable to save debt settings. Please try again.');
+  }
+}
+
+// Sync Queue operations
+
+export interface SyncQueueItem {
+  id: number;
+  table_name: string;
+  record_id: string;
+  operation: string;
+  payload: string;
+  created_at: string;
+  synced_at: string | null;
+}
+
+export async function addToSyncQueue(
+  tableName: string,
+  recordId: string,
+  operation: 'INSERT' | 'UPDATE' | 'DELETE',
+  payload: Record<string, unknown>
+): Promise<void> {
+  try {
+    const database = await getDatabase();
+    const now = new Date().toISOString();
+    await database.runAsync(
+      'INSERT INTO sync_queue (table_name, record_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?)',
+      tableName, recordId, operation, JSON.stringify(payload), now
+    );
+  } catch (error) {
+    console.error('Failed to add to sync queue:', error);
+  }
+}
+
+export async function getUnsyncedItems(): Promise<SyncQueueItem[]> {
+  try {
+    const database = await getDatabase();
+    return await database.getAllAsync<SyncQueueItem>(
+      'SELECT * FROM sync_queue WHERE synced_at IS NULL ORDER BY created_at ASC'
+    );
+  } catch (error) {
+    console.error('Failed to get unsynced items:', error);
+    return [];
+  }
+}
+
+export async function markSynced(ids: number[]): Promise<void> {
+  if (ids.length === 0) return;
+  try {
+    const database = await getDatabase();
+    const now = new Date().toISOString();
+    const placeholders = ids.map(() => '?').join(',');
+    await database.runAsync(
+      `UPDATE sync_queue SET synced_at = ? WHERE id IN (${placeholders})`,
+      now, ...ids
+    );
+  } catch (error) {
+    console.error('Failed to mark items as synced:', error);
+  }
+}
+
+export async function clearSyncedItems(): Promise<void> {
+  try {
+    const database = await getDatabase();
+    await database.runAsync('DELETE FROM sync_queue WHERE synced_at IS NOT NULL');
+  } catch (error) {
+    console.error('Failed to clear synced items from queue:', error);
+  }
+}
+
+export async function getLastSyncTime(): Promise<string | null> {
+  try {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<{ value: string }>(
+      "SELECT value FROM sync_metadata WHERE key = 'last_sync_time'"
+    );
+    return row?.value ?? null;
+  } catch (error) {
+    console.error('Failed to get last sync time:', error);
+    return null;
+  }
+}
+
+export async function setLastSyncTime(time: string): Promise<void> {
+  try {
+    const database = await getDatabase();
+    await database.runAsync(
+      "INSERT OR REPLACE INTO sync_metadata (key, value) VALUES ('last_sync_time', ?)",
+      time
+    );
+  } catch (error) {
+    console.error('Failed to set last sync time:', error);
+  }
+}
+
+export async function getSyncQueueCount(): Promise<number> {
+  try {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM sync_queue WHERE synced_at IS NULL'
+    );
+    return row?.count ?? 0;
+  } catch (error) {
+    console.error('Failed to get sync queue count:', error);
+    return 0;
   }
 }
