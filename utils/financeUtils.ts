@@ -1,4 +1,4 @@
-import { addDays, format, parseISO, getDate, startOfDay } from 'date-fns';
+import { addDays, format, parseISO, getDate, startOfDay, getDaysInMonth } from 'date-fns';
 import { Transaction, TransactionType, Frequency, DailyBalance } from '@/types';
 
 export function generateProjection(
@@ -23,17 +23,21 @@ export function generateProjection(
       if (t.frequency === Frequency.ONE_TIME) {
         isDue = t.date === dateStr;
       } else if (t.frequency === Frequency.MONTHLY) {
-        isDue = t.dayOfMonth === dayOfMonth;
+        if (t.dayOfMonth) {
+          const daysInMonth = getDaysInMonth(currentDate);
+          const effectiveDay = Math.min(t.dayOfMonth, daysInMonth);
+          isDue = effectiveDay === dayOfMonth;
+        }
       } else if (t.frequency === Frequency.BI_WEEKLY) {
-        const start = parseISO(t.date);
-        const diffTime = Math.abs(currentDate.getTime() - start.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        isDue = diffDays % 14 === 0 && currentDate >= start;
+        const start = startOfDay(parseISO(t.date));
+        const diffTime = currentDate.getTime() - start.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        isDue = diffDays >= 0 && diffDays % 14 === 0;
       } else if (t.frequency === Frequency.WEEKLY) {
-        const start = parseISO(t.date);
-        const diffTime = Math.abs(currentDate.getTime() - start.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        isDue = diffDays % 7 === 0 && currentDate >= start;
+        const start = startOfDay(parseISO(t.date));
+        const diffTime = currentDate.getTime() - start.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        isDue = diffDays >= 0 && diffDays % 7 === 0;
       }
 
       if (isDue) {
