@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFinance } from '@/context/FinanceContext';
@@ -21,10 +21,18 @@ export default function DebtScreen() {
     debtProjection,
     updateDebtSettings,
     updateTransaction,
+    refresh,
   } = useFinance();
 
   const router = useRouter();
   const [showComparisonModal, setShowComparisonModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  };
 
   // Get credit cards only (not loans for now)
   const creditCards = getCreditCards(transactions);
@@ -107,7 +115,18 @@ export default function DebtScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={['top']}>
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#0d9488"
+            colors={['#0d9488']}
+          />
+        }
+      >
         <View className="px-4 pt-2 pb-24">
           {/* Header Stats Card */}
           <View className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-5 mb-4 relative overflow-hidden">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFinance } from '@/context/FinanceContext';
@@ -10,9 +10,16 @@ import { TransactionType } from '@/types';
 type FilterType = 'all' | 'income' | 'expense';
 
 export default function TransactionsScreen() {
-  const { transactions, removeTransaction, isLoading } = useFinance();
+  const { transactions, removeTransaction, isLoading, refresh } = useFinance();
   const router = useRouter();
   const [filter, setFilter] = useState<FilterType>('all');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  };
 
   const filteredTransactions = transactions.filter((t) => {
     if (filter === 'all') return true;
@@ -91,7 +98,18 @@ export default function TransactionsScreen() {
         ))}
       </View>
 
-      <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1 px-4"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#0d9488"
+            colors={['#0d9488']}
+          />
+        }
+      >
         <View className="pb-24">
           {filteredTransactions.length > 0 ? (
             filteredTransactions.map((tx) => (

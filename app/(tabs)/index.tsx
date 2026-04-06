@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFinance } from '@/context/FinanceContext';
@@ -11,8 +11,15 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { TransactionType } from '@/types';
 
 export default function DashboardScreen() {
-  const { transactions, isLoading } = useFinance();
+  const { transactions, isLoading, refresh } = useFinance();
   const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  };
 
   // Get upcoming transactions (next 7 days)
   const today = new Date();
@@ -37,7 +44,18 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={['top']}>
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#0d9488"
+            colors={['#0d9488']}
+          />
+        }
+      >
         <View className="px-4 pt-2 pb-24">
           {/* Header */}
           <View className="flex-row justify-between items-center mb-4">
