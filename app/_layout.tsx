@@ -118,7 +118,7 @@ export default function RootLayout() {
                     <Stack.Screen
                       name="settings"
                       options={{
-                        presentation: 'modal',
+                        presentation: 'card',
                         title: 'Settings',
                         headerShown: true,
                       }}

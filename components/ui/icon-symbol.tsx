@@ -37,6 +37,22 @@ const MAPPING = {
   'sparkles': 'auto-awesome',
   'magnifyingglass': 'search',
   'xmark.circle.fill': 'cancel',
+  'person.circle': 'account-circle',
+  'rectangle.portrait.and.arrow.right': 'logout',
+  'trash.circle': 'delete-forever',
+  'crown.fill': 'workspace-premium',
+  'arrow.clockwise': 'refresh',
+  'arrow.triangle.2.circlepath': 'sync',
+  'externaldrive.fill': 'storage',
+  'square.and.arrow.up': 'ios-share',
+  'square.and.arrow.down': 'download',
+  'envelope.fill': 'email',
+  'doc.text': 'description',
+  'hand.raised.fill': 'privacy-tip',
+  'checkmark.shield.fill': 'verified-user',
+  'pencil': 'edit',
+  'chevron.left': 'chevron-left',
+  'arrow.up.right': 'open-in-new',
 } as IconMapping;
 
 /**
