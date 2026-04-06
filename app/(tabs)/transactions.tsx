@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFinance } from '@/context/FinanceContext';
@@ -13,6 +13,7 @@ export default function TransactionsScreen() {
   const { transactions, removeTransaction, isLoading, refresh } = useFinance();
   const router = useRouter();
   const [filter, setFilter] = useState<FilterType>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async () => {
@@ -22,10 +23,12 @@ export default function TransactionsScreen() {
   };
 
   const filteredTransactions = transactions.filter((t) => {
-    if (filter === 'all') return true;
-    if (filter === 'income') return t.type === TransactionType.INCOME;
-    if (filter === 'expense') return t.type === TransactionType.EXPENSE;
-    return true;
+    const matchesFilter = filter === 'all' ||
+      (filter === 'income' && t.type === TransactionType.INCOME) ||
+      (filter === 'expense' && t.type === TransactionType.EXPENSE);
+    const matchesSearch = !searchQuery ||
+      t.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
   });
 
   const handleDelete = (id: string, name: string) => {
@@ -53,6 +56,11 @@ export default function TransactionsScreen() {
     );
   }
 
+  // Determine the type of empty state to show
+  const hasTransactions = transactions.length > 0;
+  const hasActiveSearch = searchQuery.length > 0;
+  const hasActiveFilter = filter !== 'all';
+
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={['top']}>
       {/* Header */}
@@ -71,6 +79,25 @@ export default function TransactionsScreen() {
         >
           <IconSymbol name="plus.circle.fill" size={24} color="#ffffff" />
         </TouchableOpacity>
+      </View>
+
+      {/* Search Bar */}
+      <View className="px-4 mb-3">
+        <View className="flex-row items-center bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-3">
+          <IconSymbol name="magnifyingglass" size={18} color="#94a3b8" />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search transactions..."
+            placeholderTextColor="#94a3b8"
+            className="flex-1 py-3 px-2 text-slate-800 dark:text-white"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <IconSymbol name="xmark.circle.fill" size={18} color="#94a3b8" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Filter Tabs */}
@@ -101,6 +128,7 @@ export default function TransactionsScreen() {
       <ScrollView
         className="flex-1 px-4"
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -119,24 +147,27 @@ export default function TransactionsScreen() {
                 onDelete={() => handleDelete(tx.id, tx.name)}
               />
             ))
-          ) : transactions.length > 0 && filter !== 'all' ? (
-            /* Filtered but no results for this filter */
+          ) : hasTransactions && (hasActiveSearch || hasActiveFilter) ? (
+            /* Has transactions but search/filter returns nothing */
             <View className="bg-white dark:bg-slate-800 rounded-xl p-8 items-center border border-slate-100 dark:border-slate-700 mt-4">
-              <Text className="text-4xl mb-4">
-                {filter === 'income' ? '💰' : '💸'}
-              </Text>
-              <Text className="text-slate-800 dark:text-slate-200 font-semibold text-base mb-1 text-center">
-                No {filter} transactions
+              <IconSymbol name="magnifyingglass" size={40} color="#94a3b8" />
+              <Text className="text-slate-800 dark:text-slate-200 font-semibold text-base mb-1 mt-3 text-center">
+                No matching transactions
               </Text>
               <Text className="text-slate-400 dark:text-slate-500 text-center text-sm">
-                Try a different filter or add a new one
+                {hasActiveSearch
+                  ? `No results for "${searchQuery}"${hasActiveFilter ? ` in ${filter}` : ''}`
+                  : `No ${filter} transactions found`}
               </Text>
               <TouchableOpacity
-                onPress={() => setFilter('all')}
+                onPress={() => {
+                  setSearchQuery('');
+                  setFilter('all');
+                }}
                 className="mt-4 bg-slate-100 dark:bg-slate-700 px-6 py-3 rounded-xl"
               >
                 <Text className="text-slate-700 dark:text-slate-200 font-semibold">
-                  Show All
+                  Clear Filters
                 </Text>
               </TouchableOpacity>
             </View>
