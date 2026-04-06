@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -36,39 +37,161 @@ export default function AddTransactionScreen() {
   const [projectedMonthlySpend, setProjectedMonthlySpend] = useState('');
   const [loanTermMonths, setLoanTermMonths] = useState('');
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  const clearError = (field: string) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Name: required, 1-100 chars
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      newErrors.name = 'Name is required';
+    } else if (trimmedName.length > 100) {
+      newErrors.name = 'Name must be 100 characters or less';
+    }
+
+    // Amount: required, valid number, > 0, <= 999999.99
+    if (!amount) {
+      newErrors.amount = 'Amount is required';
+    } else {
+      const parsedAmount = parseFloat(amount);
+      if (isNaN(parsedAmount)) {
+        newErrors.amount = 'Amount must be a valid number';
+      } else if (parsedAmount <= 0) {
+        newErrors.amount = 'Amount must be greater than 0';
+      } else if (parsedAmount > 999999.99) {
+        newErrors.amount = 'Amount cannot exceed $999,999.99';
+      }
+    }
+
+    // Debt-specific validation (only when isDebt is on and tab is expense)
+    if (isDebt && activeTab === TransactionType.EXPENSE) {
+      // APR: required, 0-100
+      if (!apr) {
+        newErrors.apr = 'APR is required';
+      } else {
+        const parsedApr = parseFloat(apr);
+        if (isNaN(parsedApr)) {
+          newErrors.apr = 'APR must be a valid number';
+        } else if (parsedApr < 0 || parsedApr > 100) {
+          newErrors.apr = 'APR must be between 0 and 100';
+        }
+      }
+
+      // Current Balance: required, >= 0
+      if (!currentBalance) {
+        newErrors.currentBalance = 'Current balance is required';
+      } else {
+        const parsedBalance = parseFloat(currentBalance);
+        if (isNaN(parsedBalance)) {
+          newErrors.currentBalance = 'Balance must be a valid number';
+        } else if (parsedBalance < 0) {
+          newErrors.currentBalance = 'Balance cannot be negative';
+        }
+      }
+
+      // Credit Card specific
+      if (debtType === DebtType.CREDIT_CARD) {
+        // Credit Limit: required, > 0
+        if (!creditLimit) {
+          newErrors.creditLimit = 'Credit limit is required';
+        } else {
+          const parsedLimit = parseFloat(creditLimit);
+          if (isNaN(parsedLimit)) {
+            newErrors.creditLimit = 'Credit limit must be a valid number';
+          } else if (parsedLimit <= 0) {
+            newErrors.creditLimit = 'Credit limit must be greater than 0';
+          }
+        }
+
+        // Projected Monthly Spend: >= 0 if provided
+        if (projectedMonthlySpend) {
+          const parsedSpend = parseFloat(projectedMonthlySpend);
+          if (isNaN(parsedSpend)) {
+            newErrors.projectedMonthlySpend = 'Monthly spend must be a valid number';
+          } else if (parsedSpend < 0) {
+            newErrors.projectedMonthlySpend = 'Monthly spend cannot be negative';
+          }
+        }
+      }
+
+      // Loan specific
+      if (debtType === DebtType.LOAN) {
+        // Loan Term: required, 1-600
+        if (!loanTermMonths) {
+          newErrors.loanTermMonths = 'Loan term is required';
+        } else {
+          const parsedTerm = parseFloat(loanTermMonths);
+          if (isNaN(parsedTerm) || !Number.isInteger(parsedTerm)) {
+            newErrors.loanTermMonths = 'Loan term must be a whole number';
+          } else if (parsedTerm < 1 || parsedTerm > 600) {
+            newErrors.loanTermMonths = 'Loan term must be between 1 and 600 months';
+          }
+        }
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const renderError = (field: string) => {
+    if (!errors[field]) return null;
+    return <Text className="text-red-500 text-xs mt-1">{errors[field]}</Text>;
+  };
+
   const handleSubmit = async () => {
-    if (!name.trim() || !amount) return;
+    if (isSaving) return;
+    if (!validate()) return;
 
-    const newTx: Transaction = {
-      id: generateUUID(),
-      name: name.trim(),
-      amount: parseFloat(amount),
-      type: activeTab,
-      frequency,
-      date: date.toISOString().split('T')[0],
-      dayOfMonth:
-        activeTab === TransactionType.EXPENSE && frequency === Frequency.MONTHLY
-          ? date.getDate()
-          : undefined,
-      debtType: isDebt ? debtType : undefined,
-      apr: isDebt && apr ? parseFloat(apr) : undefined,
-      currentBalance: isDebt && currentBalance ? parseFloat(currentBalance) : undefined,
-      creditLimit:
-        isDebt && debtType === DebtType.CREDIT_CARD && creditLimit
-          ? parseFloat(creditLimit)
-          : undefined,
-      projectedMonthlySpend:
-        isDebt && debtType === DebtType.CREDIT_CARD && projectedMonthlySpend
-          ? parseFloat(projectedMonthlySpend)
-          : undefined,
-      loanTermMonths:
-        isDebt && debtType === DebtType.LOAN && loanTermMonths
-          ? parseFloat(loanTermMonths)
-          : undefined,
-    };
+    setIsSaving(true);
+    try {
+      const newTx: Transaction = {
+        id: generateUUID(),
+        name: name.trim(),
+        amount: parseFloat(amount),
+        type: activeTab,
+        frequency,
+        date: date.toISOString().split('T')[0],
+        dayOfMonth:
+          activeTab === TransactionType.EXPENSE && frequency === Frequency.MONTHLY
+            ? date.getDate()
+            : undefined,
+        debtType: isDebt ? debtType : undefined,
+        apr: isDebt && apr ? parseFloat(apr) : undefined,
+        currentBalance: isDebt && currentBalance ? parseFloat(currentBalance) : undefined,
+        creditLimit:
+          isDebt && debtType === DebtType.CREDIT_CARD && creditLimit
+            ? parseFloat(creditLimit)
+            : undefined,
+        projectedMonthlySpend:
+          isDebt && debtType === DebtType.CREDIT_CARD && projectedMonthlySpend
+            ? parseFloat(projectedMonthlySpend)
+            : undefined,
+        loanTermMonths:
+          isDebt && debtType === DebtType.LOAN && loanTermMonths
+            ? parseFloat(loanTermMonths)
+            : undefined,
+      };
 
-    await addTransaction(newTx);
-    router.back();
+      await addTransaction(newTx);
+      router.back();
+    } catch {
+      // Error toast is handled by FinanceContext
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const onDateChange = (_event: any, selectedDate?: Date) => {
@@ -162,14 +285,22 @@ export default function AddTransactionScreen() {
             </Text>
             <TextInput
               value={name}
-              onChangeText={setName}
+              onChangeText={(text) => {
+                setName(text);
+                clearError('name');
+              }}
               placeholder={
                 activeTab === TransactionType.EXPENSE ? 'e.g. Rent, Netflix' : 'e.g. Paycheck'
               }
               placeholderTextColor="#94a3b8"
               returnKeyType="next"
-              className="bg-white dark:bg-slate-800 rounded-xl p-4 text-slate-800 dark:text-white font-medium border border-slate-200 dark:border-slate-700"
+              className={`bg-white dark:bg-slate-800 rounded-xl p-4 text-slate-800 dark:text-white font-medium border ${
+                errors.name
+                  ? 'border-red-500'
+                  : 'border-slate-200 dark:border-slate-700'
+              }`}
             />
+            {renderError('name')}
           </View>
 
           {/* Amount Field */}
@@ -177,11 +308,20 @@ export default function AddTransactionScreen() {
             <Text className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">
               Amount
             </Text>
-            <View className="flex-row items-center bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <View
+              className={`flex-row items-center bg-white dark:bg-slate-800 rounded-xl border ${
+                errors.amount
+                  ? 'border-red-500'
+                  : 'border-slate-200 dark:border-slate-700'
+              }`}
+            >
               <Text className="text-slate-400 text-lg pl-4">$</Text>
               <TextInput
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={(text) => {
+                  setAmount(text);
+                  clearError('amount');
+                }}
                 keyboardType="decimal-pad"
                 placeholder="0.00"
                 placeholderTextColor="#94a3b8"
@@ -189,6 +329,7 @@ export default function AddTransactionScreen() {
                 className="flex-1 p-4 text-slate-800 dark:text-white text-lg font-bold"
               />
             </View>
+            {renderError('amount')}
           </View>
 
           {/* Frequency */}
@@ -353,13 +494,21 @@ export default function AddTransactionScreen() {
                       </Text>
                       <TextInput
                         value={apr}
-                        onChangeText={setApr}
+                        onChangeText={(text) => {
+                          setApr(text);
+                          clearError('apr');
+                        }}
                         keyboardType="decimal-pad"
                         placeholder="19.99"
                         placeholderTextColor="#94a3b8"
                         onFocus={() => handleInputFocus(400)}
-                        className="bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600"
+                        className={`bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border ${
+                          errors.apr
+                            ? 'border-red-500'
+                            : 'border-slate-200 dark:border-slate-600'
+                        }`}
                       />
+                      {renderError('apr')}
                     </View>
                     <View className="flex-1">
                       <Text className="text-xs font-semibold text-slate-500 mb-1">
@@ -367,13 +516,21 @@ export default function AddTransactionScreen() {
                       </Text>
                       <TextInput
                         value={currentBalance}
-                        onChangeText={setCurrentBalance}
+                        onChangeText={(text) => {
+                          setCurrentBalance(text);
+                          clearError('currentBalance');
+                        }}
                         keyboardType="decimal-pad"
                         placeholder="2500"
                         placeholderTextColor="#94a3b8"
                         onFocus={() => handleInputFocus(400)}
-                        className="bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600"
+                        className={`bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border ${
+                          errors.currentBalance
+                            ? 'border-red-500'
+                            : 'border-slate-200 dark:border-slate-600'
+                        }`}
                       />
+                      {renderError('currentBalance')}
                     </View>
                   </View>
 
@@ -386,13 +543,21 @@ export default function AddTransactionScreen() {
                         </Text>
                         <TextInput
                           value={creditLimit}
-                          onChangeText={setCreditLimit}
+                          onChangeText={(text) => {
+                            setCreditLimit(text);
+                            clearError('creditLimit');
+                          }}
                           keyboardType="decimal-pad"
                           placeholder="5000"
                           placeholderTextColor="#94a3b8"
                           onFocus={() => handleInputFocus(480)}
-                          className="bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600"
+                          className={`bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border ${
+                            errors.creditLimit
+                              ? 'border-red-500'
+                              : 'border-slate-200 dark:border-slate-600'
+                          }`}
                         />
+                        {renderError('creditLimit')}
                       </View>
                       <View className="flex-1">
                         <Text className="text-xs font-semibold text-slate-500 mb-1">
@@ -400,13 +565,21 @@ export default function AddTransactionScreen() {
                         </Text>
                         <TextInput
                           value={projectedMonthlySpend}
-                          onChangeText={setProjectedMonthlySpend}
+                          onChangeText={(text) => {
+                            setProjectedMonthlySpend(text);
+                            clearError('projectedMonthlySpend');
+                          }}
                           keyboardType="decimal-pad"
                           placeholder="500"
                           placeholderTextColor="#94a3b8"
                           onFocus={() => handleInputFocus(480)}
-                          className="bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600"
+                          className={`bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border ${
+                            errors.projectedMonthlySpend
+                              ? 'border-red-500'
+                              : 'border-slate-200 dark:border-slate-600'
+                          }`}
                         />
+                        {renderError('projectedMonthlySpend')}
                       </View>
                     </View>
                   )}
@@ -419,13 +592,21 @@ export default function AddTransactionScreen() {
                       </Text>
                       <TextInput
                         value={loanTermMonths}
-                        onChangeText={setLoanTermMonths}
+                        onChangeText={(text) => {
+                          setLoanTermMonths(text);
+                          clearError('loanTermMonths');
+                        }}
                         keyboardType="number-pad"
                         placeholder="60"
                         placeholderTextColor="#94a3b8"
                         onFocus={() => handleInputFocus(480)}
-                        className="bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-600"
+                        className={`bg-white dark:bg-slate-700 rounded-lg p-3 text-slate-800 dark:text-white border ${
+                          errors.loanTermMonths
+                            ? 'border-red-500'
+                            : 'border-slate-200 dark:border-slate-600'
+                        }`}
                       />
+                      {renderError('loanTermMonths')}
                     </View>
                   )}
                 </View>
@@ -436,20 +617,20 @@ export default function AddTransactionScreen() {
           {/* Submit Button */}
           <TouchableOpacity
             onPress={handleSubmit}
-            disabled={!name.trim() || !amount}
+            disabled={isSaving}
             className={`py-4 rounded-xl mt-4 ${
-              name.trim() && amount
-                ? 'bg-brand-600'
-                : 'bg-slate-300 dark:bg-slate-700'
+              isSaving
+                ? 'bg-slate-300 dark:bg-slate-700'
+                : 'bg-brand-600'
             }`}
           >
-            <Text
-              className={`text-center font-bold text-lg ${
-                name.trim() && amount ? 'text-white' : 'text-slate-400'
-              }`}
-            >
-              Add Transaction
-            </Text>
+            {isSaving ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text className="text-center font-bold text-lg text-white">
+                Add Transaction
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
