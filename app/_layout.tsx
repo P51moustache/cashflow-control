@@ -2,6 +2,7 @@ import "@/global.css";
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import Toast from 'react-native-toast-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
@@ -35,6 +36,7 @@ export default function RootLayout() {
             />
           </Stack>
           <StatusBar style="auto" />
+          <Toast />
         </FinanceProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

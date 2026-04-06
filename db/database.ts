@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { Transaction, TransactionType, Frequency, DebtType, UserSettings } from '@/types';
+import { Transaction, TransactionType, Frequency, DebtType, UserSettings, DebtSettings, PayoffStrategy } from '@/types';
 
 const DATABASE_NAME = 'cashflow.db';
 
@@ -40,6 +40,16 @@ async function initDatabase(database: SQLite.SQLiteDatabase): Promise<void> {
     );
 
     INSERT OR IGNORE INTO user_settings (id, current_balance) VALUES (1, 0);
+
+    CREATE TABLE IF NOT EXISTS debt_settings (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      total_monthly_budget REAL NOT NULL DEFAULT 0,
+      total_monthly_payment_budget REAL NOT NULL DEFAULT 0,
+      payoff_strategy TEXT NOT NULL DEFAULT 'SNOWBALL',
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    INSERT OR IGNORE INTO debt_settings (id) VALUES (1);
   `);
 }
 
@@ -207,5 +217,63 @@ export async function updateBalance(balance: number): Promise<void> {
   } catch (error) {
     console.error('Failed to update balance:', error);
     throw new Error('Unable to update balance. Please try again.');
+  }
+}
+
+// Debt Settings operations
+export async function getDebtSettings(): Promise<DebtSettings> {
+  try {
+    const database = await getDatabase();
+    const row = await database.getFirstAsync<{
+      total_monthly_budget: number;
+      total_monthly_payment_budget: number;
+      payoff_strategy: string;
+    }>('SELECT * FROM debt_settings WHERE id = 1');
+
+    if (!row) {
+      return {
+        totalMonthlyBudget: 0,
+        totalMonthlyPaymentBudget: 0,
+        payoffStrategy: PayoffStrategy.SNOWBALL,
+      };
+    }
+
+    return {
+      totalMonthlyBudget: row.total_monthly_budget,
+      totalMonthlyPaymentBudget: row.total_monthly_payment_budget,
+      payoffStrategy: row.payoff_strategy as PayoffStrategy,
+    };
+  } catch (error) {
+    console.error('Failed to fetch debt settings:', error);
+    return {
+      totalMonthlyBudget: 0,
+      totalMonthlyPaymentBudget: 0,
+      payoffStrategy: PayoffStrategy.SNOWBALL,
+    };
+  }
+}
+
+export async function updateDebtSettings(settings: Partial<DebtSettings>): Promise<void> {
+  try {
+    const database = await getDatabase();
+    const current = await getDebtSettings();
+    const merged = { ...current, ...settings };
+    const now = new Date().toISOString();
+
+    await database.runAsync(
+      `UPDATE debt_settings SET
+        total_monthly_budget = ?,
+        total_monthly_payment_budget = ?,
+        payoff_strategy = ?,
+        updated_at = ?
+      WHERE id = 1`,
+      merged.totalMonthlyBudget,
+      merged.totalMonthlyPaymentBudget,
+      merged.payoffStrategy,
+      now
+    );
+  } catch (error) {
+    console.error('Failed to update debt settings:', error);
+    throw new Error('Unable to save debt settings. Please try again.');
   }
 }
