@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,11 +11,16 @@ import TransactionCard from '@/components/TransactionCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { formatCurrency } from '@/utils/financeUtils';
 import { TransactionType, Frequency } from '@/types';
+import { trackScreen } from '@/lib/analytics';
 
 export default function DashboardScreen() {
   const { transactions, isLoading, refresh } = useFinance();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    trackScreen('Dashboard');
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);

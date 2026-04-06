@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useSubscription } from '@/context/SubscriptionContext';
+import { track } from '@/lib/analytics';
 
 const TERMS_URL = 'https://cashflowcontrol.app/terms';
 const PRIVACY_URL = 'https://cashflowcontrol.app/privacy';
@@ -75,6 +76,10 @@ export default function PaywallScreen() {
 
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+
+  useEffect(() => {
+    track('paywall_shown');
+  }, []);
 
   const displayPrice = currentPackagePrice || '$4.99';
 

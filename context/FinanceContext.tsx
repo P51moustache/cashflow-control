@@ -17,6 +17,7 @@ import {
 import { syncEngine, SyncStatus, transactionToSyncPayload } from '@/lib/sync';
 import { supabase } from '@/lib/supabase';
 import { addBreadcrumb } from '@/lib/sentry';
+import { track } from '@/lib/analytics';
 
 interface FinanceContextType {
   transactions: Transaction[];
@@ -123,6 +124,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Queue for sync to Supabase
       await addToSyncQueue('transactions', t.id, 'INSERT', transactionToSyncPayload(t));
       addBreadcrumb('Transaction added', 'finance', { name: t.name, amount: t.amount, type: t.type, frequency: t.frequency });
+      track('transaction_added', { type: t.type, frequency: t.frequency });
       Toast.show({ type: 'success', text1: 'Transaction Added', text2: t.name });
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Save Failed', text2: (error as Error).message });
@@ -137,6 +139,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Queue for sync to Supabase
       await addToSyncQueue('transactions', t.id, 'UPDATE', transactionToSyncPayload(t));
       addBreadcrumb('Transaction updated', 'finance', { id: t.id, name: t.name });
+      track('transaction_updated');
       Toast.show({ type: 'success', text1: 'Transaction Updated' });
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Save Failed', text2: (error as Error).message });
@@ -151,6 +154,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Queue for sync to Supabase (soft delete on server side)
       await addToSyncQueue('transactions', id, 'DELETE', {});
       addBreadcrumb('Transaction deleted', 'finance', { id });
+      track('transaction_deleted');
       Toast.show({ type: 'success', text1: 'Transaction Deleted' });
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Delete Failed', text2: (error as Error).message });
@@ -188,6 +192,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         updated_at: new Date().toISOString(),
       });
       addBreadcrumb('Debt settings updated', 'finance', { strategy: merged.payoffStrategy });
+      if (settings.payoffStrategy) {
+        track('debt_strategy_changed', { strategy: settings.payoffStrategy });
+      }
       Toast.show({ type: 'success', text1: 'Settings Saved' });
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Save Failed', text2: (error as Error).message });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -6,6 +6,7 @@ import { useFinance } from '@/context/FinanceContext';
 import TransactionCard from '@/components/TransactionCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { TransactionType } from '@/types';
+import { trackScreen } from '@/lib/analytics';
 
 type FilterType = 'all' | 'income' | 'expense';
 
@@ -15,6 +16,10 @@ export default function TransactionsScreen() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    trackScreen('Transactions');
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);

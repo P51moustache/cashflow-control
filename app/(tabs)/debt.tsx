@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -12,6 +12,7 @@ import MonthlyBudgetCard from '@/components/MonthlyBudgetCard';
 import EnhancedDebtCard from '@/components/EnhancedDebtCard';
 import PayoffTimeline from '@/components/PayoffTimeline';
 import StrategyComparisonModal from '@/components/StrategyComparisonModal';
+import { trackScreen } from '@/lib/analytics';
 
 export default function DebtScreen() {
   const {
@@ -27,6 +28,10 @@ export default function DebtScreen() {
   const router = useRouter();
   const [showComparisonModal, setShowComparisonModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    trackScreen('Debt');
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);

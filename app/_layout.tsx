@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { SubscriptionProvider, useSubscription } from '@/context/SubscriptionContext';
 import { hasCompletedOnboarding } from '@/utils/onboarding';
 import { initSentry } from '@/lib/sentry';
+import { initAnalytics } from '@/lib/analytics';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // Initialize Sentry as early as possible
@@ -85,6 +86,10 @@ function SubscriptionGate({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    initAnalytics();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

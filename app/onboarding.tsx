@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { Transaction, TransactionType, Frequency } from '@/types';
 import { generateUUID } from '@/utils/financeUtils';
 import { setOnboardingComplete } from '@/utils/onboarding';
+import { track } from '@/lib/analytics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -90,6 +91,11 @@ export default function OnboardingScreen() {
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseFrequency, setExpenseFrequency] = useState<Frequency>(Frequency.MONTHLY);
 
+  // Track onboarding started on mount
+  useEffect(() => {
+    track('onboarding_started');
+  }, []);
+
   // --- Handlers ---
 
   const onSlideScroll = useCallback(
@@ -113,6 +119,7 @@ export default function OnboardingScreen() {
   }, []);
 
   const skipOnboarding = useCallback(async () => {
+    track('onboarding_skipped');
     await setOnboardingComplete();
     router.replace('/(tabs)');
   }, [router]);
@@ -186,6 +193,7 @@ export default function OnboardingScreen() {
         await addTransaction(expenseTx);
       }
 
+      track('onboarding_completed');
       await setOnboardingComplete();
       router.replace('/(tabs)');
     } catch (error) {

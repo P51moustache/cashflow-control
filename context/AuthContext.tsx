@@ -4,6 +4,7 @@ import { useRouter, useSegments } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 import { setUser as setSentryUser, clearUser as clearSentryUser } from '@/lib/sentry';
+import { track, identifyUser, resetUser as resetAnalyticsUser } from '@/lib/analytics';
 
 interface AuthContextType {
   user: User | null;
@@ -73,11 +74,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(newSession);
       setUser(newSession?.user ?? null);
 
-      // Keep Sentry user context in sync
+      // Keep Sentry and PostHog user context in sync
       if (newSession?.user) {
         setSentryUser(newSession.user.id, newSession.user.email ?? undefined);
+        identifyUser(newSession.user.id, { email: newSession.user.email });
       } else {
         clearSentryUser();
+        resetAnalyticsUser();
       }
     });
 
@@ -97,6 +100,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       throw new Error(error.message);
     }
+
+    track('auth_signed_in', { method: 'email' });
   };
 
   const signUpWithEmail = async (email: string, password: string) => {
@@ -110,6 +115,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       throw new Error(error.message);
     }
+
+    track('auth_signed_up', { method: 'email' });
   };
 
   const signInWithApple = async () => {
@@ -140,6 +147,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         throw new Error(error.message);
       }
+
+      track('auth_signed_in', { method: 'apple' });
     } catch (err: any) {
       // User cancelled the Apple Sign In flow
       if (err.code === 'ERR_REQUEST_CANCELED') {
@@ -157,6 +166,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       throw new Error(error.message);
     }
+
+    track('auth_signed_out');
+    resetAnalyticsUser();
   };
 
   const resetPassword = async (email: string) => {

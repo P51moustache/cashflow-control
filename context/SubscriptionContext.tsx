@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { track } from '@/lib/analytics';
 
 // Conditionally import Purchases to avoid crashes when not configured
 let Purchases: typeof import('react-native-purchases').default | null = null;
@@ -127,7 +128,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       );
 
       updateSubscriptionState(customerInfo);
-      return !!customerInfo.entitlements.active[ENTITLEMENT_ID];
+      const isActive = !!customerInfo.entitlements.active[ENTITLEMENT_ID];
+      if (isActive) {
+        track('subscription_started');
+      }
+      return isActive;
     } catch (error: any) {
       // User cancelled purchase — not an error
       if (error.userCancelled) {
@@ -144,7 +149,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     try {
       const customerInfo = await Purchases!.restorePurchases();
       updateSubscriptionState(customerInfo);
-      return !!customerInfo.entitlements.active[ENTITLEMENT_ID];
+      const isActive = !!customerInfo.entitlements.active[ENTITLEMENT_ID];
+      if (isActive) {
+        track('subscription_restored');
+      }
+      return isActive;
     } catch (error) {
       console.error('Restore purchases failed:', error);
       throw error;
