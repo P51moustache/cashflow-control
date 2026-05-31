@@ -5,7 +5,7 @@ A personal cashflow and budgeting app for iOS and Android. Track income and expe
 ## Features
 - Quick transaction entry with categories and document import
 - Spending and cashflow charts and trends
-- Secure accounts: email and Sign in with Apple, synced through Supabase
+- Secure accounts: email and Sign in with Apple, backed up to the cloud with Supabase
 - Guided onboarding and a subscription paywall (RevenueCat)
 - Polished native experience: haptics, gestures, and offline-friendly local storage
 
