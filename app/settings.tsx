@@ -127,8 +127,7 @@ export default function SettingsScreen() {
   // ── Restore purchases state ──
   const [isRestoring, setIsRestoring] = useState(false);
 
-  const appVersion =
-    Constants.expoConfig?.version ?? Constants.manifest?.version ?? '1.0.0';
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   // ── Balance editing ──
   const startEditingBalance = () => {
