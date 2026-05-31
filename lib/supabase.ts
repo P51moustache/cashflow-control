@@ -4,21 +4,26 @@ import { Platform } from 'react-native';
 
 import type { Database } from './supabase-types';
 
+// On web, `localStorage` only exists in the browser. During static export
+// (`web.output: 'static'`) pages are prerendered in Node, where it's undefined,
+// so guard every access behind a `window` check.
+const isBrowser = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
 const ExpoSecureStoreAdapter = {
   getItem: async (key: string): Promise<string | null> => {
-    if (Platform.OS === 'web') return localStorage.getItem(key);
+    if (Platform.OS === 'web') return isBrowser ? window.localStorage.getItem(key) : null;
     return SecureStore.getItemAsync(key);
   },
   setItem: async (key: string, value: string): Promise<void> => {
     if (Platform.OS === 'web') {
-      localStorage.setItem(key, value);
+      if (isBrowser) window.localStorage.setItem(key, value);
       return;
     }
     await SecureStore.setItemAsync(key, value);
   },
   removeItem: async (key: string): Promise<void> => {
     if (Platform.OS === 'web') {
-      localStorage.removeItem(key);
+      if (isBrowser) window.localStorage.removeItem(key);
       return;
     }
     await SecureStore.deleteItemAsync(key);
